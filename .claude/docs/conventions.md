@@ -16,7 +16,9 @@ value-object kinds itself; `JsonString` columns stay strings because `JsonString
 
 Eloquent re-resolves the caster on every attribute access, so `castUsing()` keeps one caster per class in a
 function-static array and every cast built without an explicit mapper shares one default mapper (function-static in
-`defaultMapper()`; Rector insists on an instance method, the static variable is still per class). Both are stateless.
+`private static function defaultMapper()`). Rector turns a static method that is only called from instance context
+into an instance method, so `castUsing()` passes `self::defaultMapper()` explicitly, which keeps it static. Both are
+stateless.
 
 ## `castUsing()` checks `is_a(..., ValueObject|BackedEnum)` before the constructor
 

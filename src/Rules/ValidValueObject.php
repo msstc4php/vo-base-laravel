@@ -7,6 +7,7 @@ namespace MSSTC4PHP\ValueObject\Laravel\Rules;
 use BackedEnum;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
+use JsonException;
 use LogicException;
 use MSSTC4PHP\ValueObject\Contract\ValueObject;
 use MSSTC4PHP\ValueObject\Exception\InvalidValueObjectException;
@@ -27,7 +28,7 @@ final readonly class ValidValueObject implements ValidationRule
 
     /**
      * @param class-string<ValueObject|BackedEnum> $class
-     * @param non-empty-string|null $message replaces DEFAULT_MESSAGE; `:attribute` and `:type` (the class's short name) are replaced
+     * @param non-empty-string|null $message replaces DEFAULT_MESSAGE; `:attribute` and `:type` (the class's short name as lowercase words, "email address") are replaced
      *
      * @throws LogicException when $class is not supported, or is trusted-source only (BoundedString)
      */
@@ -54,16 +55,24 @@ final readonly class ValidValueObject implements ValidationRule
         }
 
         try {
-            $this->mapper->fromUntrustedPayload($this->class, $value);
-        } catch (InvalidValueObjectException) {
-            $fail($this->message ?? self::DEFAULT_MESSAGE)->translate(['type' => $this->shortClassName()]);
+            // A composite also arrives as JSON text (a form field, a query string), as the cast accepts it.
+            $payload = \is_string($value) && $this->mapper->isComposite($this->class)
+                ? json_decode($value, true, flags: \JSON_THROW_ON_ERROR)
+                : $value;
+            $this->mapper->fromUntrustedPayload($this->class, $payload);
+        } catch (InvalidValueObjectException|JsonException) {
+            $fail($this->message ?? self::DEFAULT_MESSAGE)->translate(['type' => $this->typeLabel()]);
         }
     }
 
-    private function shortClassName(): string
+    /**
+     * EmailAddress becomes "email address": end users never see a class name.
+     */
+    private function typeLabel(): string
     {
         $separator = strrpos($this->class, '\\');
+        $short = $separator === false ? $this->class : substr($this->class, $separator + 1);
 
-        return $separator === false ? $this->class : substr($this->class, $separator + 1);
+        return strtolower((string) preg_replace('/(?<=[a-z0-9])(?=[A-Z])/', ' ', $short));
     }
 }

@@ -38,5 +38,9 @@ Stored formats (identical to the Doctrine package, same `json_encode` flags — 
 (`lang/<locale>.json`) and returns the text itself with replacements when there is none. The validator then
 replaces `:attribute` in the result.
 
+`:type` is a label, not a class name: the short name split before every capital that follows a lowercase letter or
+digit, lowercased (same scheme as the Symfony bundle's constraint). Composite input that is a string is decoded as
+JSON first (as in the cast); invalid JSON is a rule failure.
+
 Laravel itself does not run a non-implicit rule for `''` (and for missing attributes); the rule still lets
 `null`/`''` through for direct calls.

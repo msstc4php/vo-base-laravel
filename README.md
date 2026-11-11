@@ -106,10 +106,11 @@ $request->validate([
 
 - `null` and `''` pass; emptiness is the job of `required`.
 - The input goes through the same mapper as the cast: form strings like `"8080"` pass for `Port`, JSON numbers too.
-  Composites: the rule accepts an array (`{"lat": 1, "lng": 2}` in a JSON body); the cast additionally accepts JSON
-  text. An instance of the value object passes as well.
+  Composites accept an array (`{"lat": 1, "lng": 2}` in a JSON body) or JSON text (a form field), exactly like the
+  cast; invalid JSON fails the rule. An instance of the value object passes as well.
 - Invalid content and a wrong input type both fail with one message: `The :attribute field is not a valid :type.`,
-  where `:type` is the short class name (`EmailAddress`). The text is also the translation key: add it to
+  where `:type` is the short class name as lowercase words (`EmailAddress` → "email address", `Ipv4Address` →
+  "ipv4 address"), never a class name. The text is also the translation key: add it to
   `lang/<locale>.json` to translate it. A custom message (second argument) is translated the same way.
 - A class the core marks as trusted-source only (`ValueObjectMapper::supportsUntrusted()` is false — today
   `BoundedString`) is refused with a `LogicException`: its payload carries its own length bounds, so request input

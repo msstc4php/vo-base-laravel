@@ -11,6 +11,7 @@ First release. No stability promise before 1.0.
   trusted-source only (`BoundedString`).
 - A raw payload assigned to a cast attribute is untrusted input (`fromUntrustedPayload()`; a raw `BoundedString` is an
   `InvalidPayloadException`); stored values are read as trusted (`fromPayload()`). Query expressions are rejected.
-- The rule accepts an instance of the value object.
+- The rule accepts an instance of the value object and, for composites, JSON text; `:type` is a lowercase label
+  ("email address"), never a class name.
 - Casters are cached per class and share one default mapper.
 - Requires `msstc4php/vo-base` `^1.1` and `illuminate/*` `^13.0`.

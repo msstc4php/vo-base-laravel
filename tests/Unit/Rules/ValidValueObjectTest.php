@@ -19,6 +19,7 @@ use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\AsDimensions;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Dimensions;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Priority;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\UnmappedValueObject;
+use MSSTC4PHP\ValueObject\Network\Ipv4Address;
 use MSSTC4PHP\ValueObject\Network\Port;
 use MSSTC4PHP\ValueObject\Primitive\BoundedString;
 use MSSTC4PHP\ValueObject\Primitive\Percentage;
@@ -54,6 +55,7 @@ final class ValidValueObjectTest extends TestCase
         yield 'string enum' => [CountryCode::class, 'DE'];
         yield 'int enum from a form string' => [Priority::class, '9'];
         yield 'composite from JSON' => [GeoCoordinates::class, ['lat' => 52.52, 'lng' => 13.405]];
+        yield 'composite as JSON text' => [GeoCoordinates::class, '{"lat":52.52,"lng":13.405}'];
         yield 'an instance' => [EmailAddress::class, EmailAddress::from('jane@example.com')];
         yield 'null' => [EmailAddress::class, null];
         yield 'empty string' => [Port::class, ''];
@@ -73,18 +75,21 @@ final class ValidValueObjectTest extends TestCase
      */
     public static function invalidInput(): iterable
     {
-        yield 'string-backed' => [EmailAddress::class, 'not-an-email', 'EmailAddress'];
-        yield 'int-backed out of range' => [Port::class, '70000', 'Port'];
-        yield 'int-backed not a number' => [Port::class, '80a', 'Port'];
-        yield 'int-backed with a leading zero' => [Port::class, '080', 'Port'];
-        yield 'float-backed with a trailing dot' => [Percentage::class, '12.', 'Percentage'];
-        yield 'float-backed out of range' => [Percentage::class, '1e400', 'Percentage'];
-        yield 'string enum' => [CountryCode::class, 'XX', 'CountryCode'];
-        yield 'int enum' => [Priority::class, '5', 'Priority'];
-        yield 'composite out of range' => [GeoCoordinates::class, ['lat' => 91, 'lng' => 0], 'GeoCoordinates'];
-        yield 'composite of the wrong type' => [GeoCoordinates::class, '52.52,13.405', 'GeoCoordinates'];
-        yield 'array for a string-backed one' => [EmailAddress::class, ['jane@example.com'], 'EmailAddress'];
-        yield 'bool for an int-backed one' => [Port::class, true, 'Port'];
+        yield 'string-backed' => [EmailAddress::class, 'not-an-email', 'email address'];
+        yield 'int-backed out of range' => [Port::class, '70000', 'port'];
+        yield 'int-backed not a number' => [Port::class, '80a', 'port'];
+        yield 'int-backed with a leading zero' => [Port::class, '080', 'port'];
+        yield 'float-backed with a trailing dot' => [Percentage::class, '12.', 'percentage'];
+        yield 'float-backed out of range' => [Percentage::class, '1e400', 'percentage'];
+        yield 'string enum' => [CountryCode::class, 'XX', 'country code'];
+        yield 'int enum' => [Priority::class, '5', 'priority'];
+        yield 'composite out of range' => [GeoCoordinates::class, ['lat' => 91, 'lng' => 0], 'geo coordinates'];
+        yield 'composite as invalid JSON text' => [GeoCoordinates::class, '52.52,13.405', 'geo coordinates'];
+        yield 'composite as JSON text of the wrong type' => [GeoCoordinates::class, '"52.52,13.405"', 'geo coordinates'];
+        yield 'composite of the wrong type' => [GeoCoordinates::class, 52.52, 'geo coordinates'];
+        yield 'digits after a lowercase letter' => [Ipv4Address::class, '300.1.1.1', 'ipv4 address'];
+        yield 'array for a string-backed one' => [EmailAddress::class, ['jane@example.com'], 'email address'];
+        yield 'bool for an int-backed one' => [Port::class, true, 'port'];
     }
 
     /**
@@ -136,10 +141,10 @@ final class ValidValueObjectTest extends TestCase
     {
         $validator = $this->validation->make(
             ['email' => 'nope'],
-            ['email' => [new ValidValueObject(EmailAddress::class, 'Give :attribute a real :type address.')]],
+            ['email' => [new ValidValueObject(EmailAddress::class, 'Give :attribute a real :type.')]],
         );
 
-        self::assertSame(['email' => ['Give email a real EmailAddress address.']], $validator->errors()->toArray());
+        self::assertSame(['email' => ['Give email a real email address.']], $validator->errors()->toArray());
     }
 
     public function testMessageIsTranslatedThroughJsonTranslations(): void
@@ -148,7 +153,7 @@ final class ValidValueObjectTest extends TestCase
         $validator = $this->validation->make(['email' => 'nope'], ['email' => [new ValidValueObject(EmailAddress::class)]]);
         $validator->getTranslator()->setLocale('de');
 
-        self::assertSame(['email' => ['email ist kein gültiger Wert für EmailAddress.']], $validator->errors()->toArray());
+        self::assertSame(['email' => ['email ist kein gültiger Wert für email address.']], $validator->errors()->toArray());
     }
 
     public function testCustomMapperCodecIsUsed(): void
@@ -157,7 +162,7 @@ final class ValidValueObjectTest extends TestCase
 
         self::assertTrue($this->validation->make(['size' => ['width' => 640, 'height' => 480]], ['size' => [$rule]])->passes());
         self::assertSame(
-            ['size' => ['The size field is not a valid Dimensions.']],
+            ['size' => ['The size field is not a valid dimensions.']],
             $this->validation->make(['size' => ['width' => 0, 'height' => 480]], ['size' => [$rule]])->errors()->toArray(),
         );
     }

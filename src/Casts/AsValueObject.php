@@ -46,7 +46,7 @@ final readonly class AsValueObject implements Castable, CastsAttributes, Compare
         private string $class,
         ?ValueObjectMapper $mapper = null,
     ) {
-        $this->mapper = $mapper ?? $this->defaultMapper();
+        $this->mapper = $mapper ?? self::defaultMapper();
         if (!$this->mapper->supports($class)) {
             throw new LogicException(\sprintf('%s cannot cast to %s: it is neither a scalar-backed value object, a backed enum nor a class with a payload codec.', self::class, $class));
         }
@@ -84,7 +84,7 @@ final readonly class AsValueObject implements Castable, CastsAttributes, Compare
             throw new LogicException(\sprintf('%s expects exactly one value object class, as in %s::of(EmailAddress::class); got "%s".', self::class, self::class, implode(',', $arguments)));
         }
 
-        return $casters[$class] ??= new self($class);
+        return $casters[$class] ??= new self($class, self::defaultMapper());
     }
 
     /**
@@ -190,7 +190,10 @@ final readonly class AsValueObject implements Castable, CastsAttributes, Compare
         }
     }
 
-    private function defaultMapper(): ValueObjectMapper
+    /**
+     * Shared by every cast built without an explicit mapper: it is stateless.
+     */
+    private static function defaultMapper(): ValueObjectMapper
     {
         /** @var ValueObjectMapper|null $mapper */
         static $mapper = null;
