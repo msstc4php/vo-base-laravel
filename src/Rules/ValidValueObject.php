@@ -14,9 +14,9 @@ use MSSTC4PHP\ValueObject\Payload\ValueObjectMapper;
 use Override;
 
 /**
- * Passes when the input is a valid payload of the value object: the value object
- * is the single source of validation truth. Null and '' pass; emptiness is the
- * job of `required`. A wrong input type fails like invalid content.
+ * Passes when the input is a valid payload of the value object, or an instance of
+ * it: the value object is the single source of validation truth. Null and '' pass;
+ * emptiness is the job of `required`. A wrong input type fails like invalid content.
  */
 final readonly class ValidValueObject implements ValidationRule
 {
@@ -49,7 +49,7 @@ final readonly class ValidValueObject implements ValidationRule
     #[Override]
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        if ($value === null || $value === '') {
+        if ($value === null || $value === '' || $value instanceof $this->class) {
             return;
         }
 

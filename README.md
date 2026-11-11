@@ -68,15 +68,29 @@ Behaviour:
   value object: `$customer->email = 'jane@example.com'` stores the canonical form, `$customer->port = 70000` throws.
   A composite accepts an array or its JSON text. A raw payload counts as untrusted input (it may come from
   `$model->fill($request->all())`): `BoundedString`, whose payload carries its own bounds, must be assigned as an
-  instance — a raw array or JSON for it throws `LogicException`. Reading it from the database is fine.
+  instance — a raw array or JSON for it throws `InvalidPayloadException`. Reading it from the database is fine.
+- Query expressions (`DB::raw(...)`, any `Expression`) are not payloads: assigning one throws
+  `InvalidPayloadException`. Write such updates with the query builder instead.
 - `toArray()` / `toJson()` use the payload form: a composite becomes a nested array, not a JSON string.
 - Dirty checking compares payloads, so a `jsonb` column that reformats the JSON does not make the model dirty.
 - An unsupported class (`AsValueObject::of(stdClass::class)`) throws `LogicException` the first time the model uses
   the cast.
 
-For a value object of your own with a payload codec, build the cast with your mapper:
-`new AsValueObject(Money::class, new ValueObjectMapper([new MoneyCodec()]))` (a custom cast class returning it from
-`castUsing()` lets you keep the string syntax).
+For a value object of your own with a payload codec, give the cast your mapper through a small `Castable`:
+
+```php
+final readonly class AsMoney implements Castable
+{
+    public static function castUsing(array $arguments): AsValueObject
+    {
+        return new AsValueObject(Money::class, new ValueObjectMapper([new MoneyCodec()]));
+    }
+}
+
+// casts(): 'price' => AsMoney::class
+```
+
+The rule takes the same mapper: `new ValidValueObject(Money::class, mapper: $mapper)`.
 
 ## Validation rule
 
@@ -91,8 +105,9 @@ $request->validate([
 ```
 
 - `null` and `''` pass; emptiness is the job of `required`.
-- The input goes through the same mapper as the cast: form strings like `"8080"` pass for `Port`, JSON numbers too;
-  a composite such as `GeoCoordinates` expects an array (`{"lat": 1, "lng": 2}` in a JSON body).
+- The input goes through the same mapper as the cast: form strings like `"8080"` pass for `Port`, JSON numbers too.
+  Composites: the rule accepts an array (`{"lat": 1, "lng": 2}` in a JSON body); the cast additionally accepts JSON
+  text. An instance of the value object passes as well.
 - Invalid content and a wrong input type both fail with one message: `The :attribute field is not a valid :type.`,
   where `:type` is the short class name (`EmailAddress`). The text is also the translation key: add it to
   `lang/<locale>.json` to translate it. A custom message (second argument) is translated the same way.

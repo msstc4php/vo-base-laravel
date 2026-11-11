@@ -25,24 +25,29 @@ use Override;
  * Assigning a raw payload (`$model->email = 'a@b.c'`) is accepted and validated
  * through the value object, so the attribute never holds an invalid value. A raw
  * payload is treated as untrusted input: a class whose payload carries its own
- * constraints (BoundedString) must be assigned as an instance.
+ * constraints (BoundedString) must be assigned as an instance. Query expressions
+ * (`DB::raw()`) are not payloads and are rejected too.
  *
  * @template TValue of ValueObject|BackedEnum the value object class the attribute holds
  *
- * @implements CastsAttributes<TValue, TValue|string|int|float|array<array-key, mixed>>
+ * @implements CastsAttributes<TValue, TValue|string|int|float|array<string, scalar|null>>
  */
 final readonly class AsValueObject implements Castable, CastsAttributes, ComparesCastableAttributes, SerializesCastableAttributes
 {
+    private ValueObjectMapper $mapper;
+
     /**
      * @param class-string<TValue> $class
+     * @param ValueObjectMapper|null $mapper null for the default mapper, shared by every cast
      *
      * @throws LogicException when the mapper does not support $class
      */
     public function __construct(
         private string $class,
-        private ValueObjectMapper $mapper = new ValueObjectMapper(),
+        ?ValueObjectMapper $mapper = null,
     ) {
-        if (!$mapper->supports($class)) {
+        $this->mapper = $mapper ?? $this->defaultMapper();
+        if (!$this->mapper->supports($class)) {
             throw new LogicException(\sprintf('%s cannot cast to %s: it is neither a scalar-backed value object, a backed enum nor a class with a payload codec.', self::class, $class));
         }
     }
@@ -60,6 +65,8 @@ final readonly class AsValueObject implements Castable, CastsAttributes, Compare
     }
 
     /**
+     * Eloquent resolves the caster on every attribute access, so casters are kept per class.
+     *
      * @param array<array-key, string> $arguments
      *
      * @return self<ValueObject|BackedEnum>
@@ -69,12 +76,15 @@ final readonly class AsValueObject implements Castable, CastsAttributes, Compare
     #[Override]
     public static function castUsing(array $arguments): self
     {
+        /** @var array<class-string<ValueObject|BackedEnum>, self<ValueObject|BackedEnum>> $casters */
+        static $casters = [];
+
         $class = $arguments[0] ?? '';
-        if (\count($arguments) !== 1 || !is_a($class, ValueObject::class, true) && !is_a($class, BackedEnum::class, true)) {
+        if (\count($arguments) !== 1 || (!is_a($class, ValueObject::class, true) && !is_a($class, BackedEnum::class, true))) {
             throw new LogicException(\sprintf('%s expects exactly one value object class, as in %s::of(EmailAddress::class); got "%s".', self::class, self::class, implode(',', $arguments)));
         }
 
-        return new self($class);
+        return $casters[$class] ??= new self($class);
     }
 
     /**
@@ -93,8 +103,8 @@ final readonly class AsValueObject implements Castable, CastsAttributes, Compare
     /**
      * @param array<string, mixed> $attributes
      *
-     * @throws InvalidValueObjectException when $value is neither a TValue nor a valid payload of one
-     * @throws LogicException when $value is a raw payload of a class that is trusted-source only
+     * @throws InvalidValueObjectException when $value is neither a TValue nor a valid payload of one;
+     *                                     InvalidPayloadException for a raw payload of a trusted-source-only class
      */
     #[Override]
     public function set(Model $model, string $key, mixed $value, array $attributes): string|int|float|null
@@ -163,40 +173,28 @@ final readonly class AsValueObject implements Castable, CastsAttributes, Compare
             return $value;
         }
 
-        try {
-            return $this->fromPayload($value, $trusted);
-        } catch (InvalidPayloadException $exception) {
-            // Composites arrive as JSON text from SQL; the mapper wants the decoded array.
-            $decoded = \is_string($value) ? $this->decodeJsonObject($value) : null;
-            if ($decoded === null) {
-                throw $exception;
-            }
+        // SQL hands a composite over as JSON text; the mapper wants the decoded array.
+        $payload = \is_string($value) && $this->mapper->isComposite($this->class) ? $this->decodeJson($value) : $value;
 
-            return $this->fromPayload($decoded, $trusted);
-        }
-    }
-
-    /**
-     * @return TValue
-     */
-    private function fromPayload(mixed $payload, bool $trusted): object
-    {
         return $trusted
             ? $this->mapper->fromPayload($this->class, $payload)
             : $this->mapper->fromUntrustedPayload($this->class, $payload);
     }
 
-    /**
-     * @return array<array-key, mixed>|null
-     */
-    private function decodeJsonObject(string $json): ?array
+    private function decodeJson(string $json): mixed
     {
         try {
-            $decoded = json_decode($json, true, flags: \JSON_THROW_ON_ERROR);
-        } catch (JsonException) {
-            return null;
+            return json_decode($json, true, flags: \JSON_THROW_ON_ERROR);
+        } catch (JsonException $exception) {
+            throw new InvalidPayloadException(\sprintf('A %s payload must be JSON text, invalid JSON given.', $this->class), $exception->getCode(), previous: $exception);
         }
+    }
 
-        return \is_array($decoded) ? $decoded : null;
+    private function defaultMapper(): ValueObjectMapper
+    {
+        /** @var ValueObjectMapper|null $mapper */
+        static $mapper = null;
+
+        return $mapper ??= new ValueObjectMapper();
     }
 }

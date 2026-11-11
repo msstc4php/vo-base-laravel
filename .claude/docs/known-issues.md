@@ -34,7 +34,8 @@ before group parsing) and otherwise returns it unchanged with replacements appli
 
 Int payloads must be canonical digits (`"080"` is rejected), float strings must match the core's decimal pattern
 (exponent allowed, `"12."` rejected, non-finite rejected), `DateRange` only ISO 8601 with offset. The rule tests pin
-`"080"` and `"12."` as failures.
+`"080"` and `"12."` as failures; the cast tests pin a `DateRange` round trip (stored as
+`Y-m-d\TH:i:s.uP`) and reject one without an offset.
 
 ## Lowest-deps copy with a non-symlinked path repo goes stale
 

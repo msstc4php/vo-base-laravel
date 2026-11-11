@@ -14,6 +14,7 @@ use MSSTC4PHP\ValueObject\Network\Port;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use ReflectionProperty;
 use stdClass;
 
 #[CoversClass(AsValueObject::class)]
@@ -29,6 +30,19 @@ final class AsValueObjectTest extends TestCase
         $caster = AsValueObject::castUsing([Port::class]);
 
         self::assertSame(80, $caster->set(new Customer(), 'port', Port::from(80), []));
+    }
+
+    public function testCastUsingReusesTheCasterPerClass(): void
+    {
+        self::assertSame(AsValueObject::castUsing([Port::class]), AsValueObject::castUsing([Port::class]));
+        self::assertNotSame(AsValueObject::castUsing([Port::class]), AsValueObject::castUsing([EmailAddress::class]));
+    }
+
+    public function testCastersShareTheDefaultMapper(): void
+    {
+        $mapper = new ReflectionProperty(AsValueObject::class, 'mapper');
+
+        self::assertSame($mapper->getValue(new AsValueObject(Port::class)), $mapper->getValue(new AsValueObject(EmailAddress::class)));
     }
 
     /**

@@ -13,6 +13,7 @@ use MSSTC4PHP\ValueObject\Network\Port;
 use MSSTC4PHP\ValueObject\Primitive\BoundedString;
 use MSSTC4PHP\ValueObject\Primitive\IntRange;
 use MSSTC4PHP\ValueObject\Primitive\Percentage;
+use MSSTC4PHP\ValueObject\Temporal\DateRange;
 use Override;
 
 /**
@@ -44,6 +45,8 @@ final class Customer extends Model
             'location' => AsValueObject::of(GeoCoordinates::class),
             'quantity' => AsValueObject::of(IntRange::class),
             'label' => AsValueObject::of(BoundedString::class),
+            'period' => AsValueObject::of(DateRange::class),
+            'size' => AsDimensions::class,
         ];
     }
 }

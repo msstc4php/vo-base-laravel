@@ -4,22 +4,26 @@ declare(strict_types=1);
 
 namespace MSSTC4PHP\ValueObject\Laravel\Tests\Unit\Casts;
 
+use DateTimeImmutable;
 use Illuminate\Database\Capsule\Manager;
+use Illuminate\Database\Query\Expression;
 use Illuminate\Database\Schema\Blueprint;
-use LogicException;
 use MSSTC4PHP\ValueObject\Exception\InvalidEmailAddressException;
 use MSSTC4PHP\ValueObject\Exception\InvalidPayloadException;
 use MSSTC4PHP\ValueObject\Exception\InvalidPortException;
+use MSSTC4PHP\ValueObject\Exception\InvalidValueObjectException;
 use MSSTC4PHP\ValueObject\Geo\GeoCoordinates;
 use MSSTC4PHP\ValueObject\I18n\CountryCode;
 use MSSTC4PHP\ValueObject\Identity\EmailAddress;
 use MSSTC4PHP\ValueObject\Laravel\Casts\AsValueObject;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Customer;
+use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Dimensions;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Priority;
 use MSSTC4PHP\ValueObject\Network\Port;
 use MSSTC4PHP\ValueObject\Primitive\BoundedString;
 use MSSTC4PHP\ValueObject\Primitive\IntRange;
 use MSSTC4PHP\ValueObject\Primitive\Percentage;
+use MSSTC4PHP\ValueObject\Temporal\DateRange;
 use Override;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -48,6 +52,8 @@ final class AsValueObjectEloquentTest extends TestCase
             $table->text('location')->nullable();
             $table->text('quantity')->nullable();
             $table->text('label')->nullable();
+            $table->text('period')->nullable();
+            $table->text('size')->nullable();
         });
     }
 
@@ -63,6 +69,12 @@ final class AsValueObjectEloquentTest extends TestCase
         yield 'int enum' => ['priority', Priority::High, 9];
         yield 'composite' => ['location', GeoCoordinates::fromFloats(52.52, 13.405), '{"lat":52.52,"lng":13.405}'];
         yield 'composite with bounds' => ['label', new BoundedString('abc', 1, 5), '{"value":"abc","minLength":1,"maxLength":5}'];
+        yield 'date range' => [
+            'period',
+            new DateRange(new DateTimeImmutable('2026-11-11T00:00:00+00:00'), new DateTimeImmutable('2026-11-12T12:30:00.250000+02:00')),
+            '{"start":"2026-11-11T00:00:00.000000+00:00","end":"2026-11-12T12:30:00.250000+02:00"}',
+        ];
+        yield 'composite with a custom codec' => ['size', new Dimensions(640, 480), '{"width":640,"height":480}'];
     }
 
     #[DataProvider('valueObjects')]
@@ -122,9 +134,34 @@ final class AsValueObjectEloquentTest extends TestCase
     public function testCompositeRejectsAStringThatIsNotJson(): void
     {
         $this->expectException(InvalidPayloadException::class);
-        $this->expectExceptionMessage('must be an array, string given');
+        $this->expectExceptionMessage('must be JSON text, invalid JSON given');
+        $this->expectExceptionCode(\JSON_ERROR_SYNTAX);
 
         new Customer()->setAttribute('location', '{lat: 1}');
+    }
+
+    public function testQueryExpressionIsRejected(): void
+    {
+        $this->expectException(InvalidPayloadException::class);
+
+        new Customer()->setAttribute('email', new Expression('LOWER(email)'));
+    }
+
+    public function testDateRangeWithoutAnOffsetIsRejected(): void
+    {
+        $this->expectException(InvalidPayloadException::class);
+        $this->expectExceptionMessage('ISO 8601 instant with an offset');
+
+        new Customer()->setAttribute('period', ['start' => '2026-11-11T00:00:00', 'end' => '2026-11-12T00:00:00']);
+    }
+
+    public function testCustomCodecRejectsAnInvalidStoredValue(): void
+    {
+        $id = $this->insert(['size' => '{"width":0,"height":480}']);
+
+        $this->expectException(InvalidValueObjectException::class);
+
+        $this->find($id)->getAttribute('size');
     }
 
     public function testUnencodableCompositeFailsAsInvalidPayload(): void
@@ -153,7 +190,7 @@ final class AsValueObjectEloquentTest extends TestCase
     #[DataProvider('rawBoundedStringPayloads')]
     public function testRawPayloadOfATrustedSourceOnlyClassIsRefusedOnAssignment(array|string $payload): void
     {
-        $this->expectException(LogicException::class);
+        $this->expectException(InvalidPayloadException::class);
         $this->expectExceptionMessage('cannot be read from untrusted input');
 
         new Customer()->fill(['label' => $payload]);

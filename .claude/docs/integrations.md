@@ -8,7 +8,9 @@ How Eloquent drives it (`Illuminate\Database\Eloquent\Concerns\HasAttributes`, L
 
 - `resolveCasterClass()` splits `Class:arg1,arg2` on the first `:` and `,`. A `Castable` class gets
   `castUsing($arguments)`; any other class gets `new $class(...$arguments)`. The caster is **re-resolved on every
-  access** (no caching of the caster object), so construction must stay cheap.
+  access** (Eloquent does not cache it), hence the per-class cache in `castUsing()`.
+- An `Illuminate\Database\Query\Expression` assigned to the attribute reaches `set()` like any value; the cast
+  rejects it as a wrong payload type.
 - `casts()` may return strings, `[Class, arg]` arrays (joined to `Class:arg`) or `Stringable` objects. Model's
   PHPDoc only declares `array<string, string|Stringable>`, so `AsValueObject::of()` (a string) is the documented form.
 - `get()` result objects are cached in `classCastCache`; on save `mergeAttributesFromClassCasts()` calls `set()` again

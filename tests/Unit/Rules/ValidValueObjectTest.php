@@ -15,6 +15,8 @@ use MSSTC4PHP\ValueObject\Geo\GeoCoordinates;
 use MSSTC4PHP\ValueObject\I18n\CountryCode;
 use MSSTC4PHP\ValueObject\Identity\EmailAddress;
 use MSSTC4PHP\ValueObject\Laravel\Rules\ValidValueObject;
+use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\AsDimensions;
+use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Dimensions;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Priority;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\UnmappedValueObject;
 use MSSTC4PHP\ValueObject\Network\Port;
@@ -52,6 +54,7 @@ final class ValidValueObjectTest extends TestCase
         yield 'string enum' => [CountryCode::class, 'DE'];
         yield 'int enum from a form string' => [Priority::class, '9'];
         yield 'composite from JSON' => [GeoCoordinates::class, ['lat' => 52.52, 'lng' => 13.405]];
+        yield 'an instance' => [EmailAddress::class, EmailAddress::from('jane@example.com')];
         yield 'null' => [EmailAddress::class, null];
         yield 'empty string' => [Port::class, ''];
     }
@@ -146,6 +149,17 @@ final class ValidValueObjectTest extends TestCase
         $validator->getTranslator()->setLocale('de');
 
         self::assertSame(['email' => ['email ist kein gültiger Wert für EmailAddress.']], $validator->errors()->toArray());
+    }
+
+    public function testCustomMapperCodecIsUsed(): void
+    {
+        $rule = new ValidValueObject(Dimensions::class, mapper: AsDimensions::mapper());
+
+        self::assertTrue($this->validation->make(['size' => ['width' => 640, 'height' => 480]], ['size' => [$rule]])->passes());
+        self::assertSame(
+            ['size' => ['The size field is not a valid Dimensions.']],
+            $this->validation->make(['size' => ['width' => 0, 'height' => 480]], ['size' => [$rule]])->errors()->toArray(),
+        );
     }
 
     public function testBoundedStringIsRefusedBecauseTheInputWouldChooseItsBounds(): void
