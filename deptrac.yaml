@@ -1,0 +1,17 @@
+deptrac:
+  paths:
+    - ./src
+  layers:
+    - name: Casts
+      collectors:
+        - type: directory
+          value: src/Casts/.*
+    - name: Rules
+      collectors:
+        - type: directory
+          value: src/Rules/.*
+  ruleset:
+    # Both depend on the core and Illuminate only; neither is declared as a layer.
+    # The cast and the rule never see each other: an app may use either alone.
+    Casts: ~
+    Rules: ~
