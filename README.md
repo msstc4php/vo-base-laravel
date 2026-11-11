@@ -66,7 +66,9 @@ Behaviour:
   float-backed value objects and int enums.
 - Assigning a value object stores its payload. Assigning a raw payload is accepted too and validated through the
   value object: `$customer->email = 'jane@example.com'` stores the canonical form, `$customer->port = 70000` throws.
-  A composite accepts an array or its JSON text.
+  A composite accepts an array or its JSON text. A raw payload counts as untrusted input (it may come from
+  `$model->fill($request->all())`): `BoundedString`, whose payload carries its own bounds, must be assigned as an
+  instance — a raw array or JSON for it throws `LogicException`. Reading it from the database is fine.
 - `toArray()` / `toJson()` use the payload form: a composite becomes a nested array, not a JSON string.
 - Dirty checking compares payloads, so a `jsonb` column that reformats the JSON does not make the model dirty.
 - An unsupported class (`AsValueObject::of(stdClass::class)`) throws `LogicException` the first time the model uses
@@ -94,7 +96,8 @@ $request->validate([
 - Invalid content and a wrong input type both fail with one message: `The :attribute field is not a valid :type.`,
   where `:type` is the short class name (`EmailAddress`). The text is also the translation key: add it to
   `lang/<locale>.json` to translate it. A custom message (second argument) is translated the same way.
-- `BoundedString` is refused with a `LogicException`: its payload carries its own length bounds, so request input
+- A class the core marks as trusted-source only (`ValueObjectMapper::supportsUntrusted()` is false — today
+  `BoundedString`) is refused with a `LogicException`: its payload carries its own length bounds, so request input
   would choose the limits it is checked against. Validate length with `min`/`max` or use `NonEmptyString`.
 - An unsupported class throws `LogicException` in the constructor.
 

@@ -73,7 +73,9 @@ final class ValidValueObjectTest extends TestCase
         yield 'string-backed' => [EmailAddress::class, 'not-an-email', 'EmailAddress'];
         yield 'int-backed out of range' => [Port::class, '70000', 'Port'];
         yield 'int-backed not a number' => [Port::class, '80a', 'Port'];
-        yield 'float-backed' => [Percentage::class, '1e400', 'Percentage'];
+        yield 'int-backed with a leading zero' => [Port::class, '080', 'Port'];
+        yield 'float-backed with a trailing dot' => [Percentage::class, '12.', 'Percentage'];
+        yield 'float-backed out of range' => [Percentage::class, '1e400', 'Percentage'];
         yield 'string enum' => [CountryCode::class, 'XX', 'CountryCode'];
         yield 'int enum' => [Priority::class, '5', 'Priority'];
         yield 'composite out of range' => [GeoCoordinates::class, ['lat' => 91, 'lng' => 0], 'GeoCoordinates'];

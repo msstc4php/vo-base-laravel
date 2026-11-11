@@ -29,3 +29,14 @@ the run exits 0. Read `var/infection/infection.log` for the escapes.
 
 The default message ends with a `.`; `Translator::get()` still finds it in JSON translations (looked up verbatim
 before group parsing) and otherwise returns it unchanged with replacements applied.
+
+## Core parsing is strict (vo-base 72d0fc5)
+
+Int payloads must be canonical digits (`"080"` is rejected), float strings must match the core's decimal pattern
+(exponent allowed, `"12."` rejected, non-finite rejected), `DateRange` only ISO 8601 with offset. The rule tests pin
+`"080"` and `"12."` as failures.
+
+## Lowest-deps copy with a non-symlinked path repo goes stale
+
+The `--prefer-lowest` check runs in a `$TMPDIR` copy with `symlink: false`; after a core change, delete
+`vendor/msstc4php` and the lock there, or the copy tests an old core.

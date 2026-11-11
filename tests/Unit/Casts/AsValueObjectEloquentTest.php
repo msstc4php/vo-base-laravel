@@ -6,6 +6,7 @@ namespace MSSTC4PHP\ValueObject\Laravel\Tests\Unit\Casts;
 
 use Illuminate\Database\Capsule\Manager;
 use Illuminate\Database\Schema\Blueprint;
+use LogicException;
 use MSSTC4PHP\ValueObject\Exception\InvalidEmailAddressException;
 use MSSTC4PHP\ValueObject\Exception\InvalidPayloadException;
 use MSSTC4PHP\ValueObject\Exception\InvalidPortException;
@@ -135,6 +136,36 @@ final class AsValueObjectEloquentTest extends TestCase
         new Customer()->setAttribute('label', new BoundedString("\xB1\x31"));
     }
 
+    /**
+     * @return iterable<string, array{array{value: string, minLength: int, maxLength: int}|string}>
+     */
+    public static function rawBoundedStringPayloads(): iterable
+    {
+        yield 'array' => [['value' => 'abc', 'minLength' => 0, 'maxLength' => 100000]];
+        yield 'JSON text' => ['{"value":"abc","minLength":0,"maxLength":100000}'];
+    }
+
+    /**
+     * fill($request->all()) must not let the client choose the bounds it is checked against.
+     *
+     * @param array{value: string, minLength: int, maxLength: int}|string $payload
+     */
+    #[DataProvider('rawBoundedStringPayloads')]
+    public function testRawPayloadOfATrustedSourceOnlyClassIsRefusedOnAssignment(array|string $payload): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('cannot be read from untrusted input');
+
+        new Customer()->fill(['label' => $payload]);
+    }
+
+    public function testStoredPayloadOfATrustedSourceOnlyClassIsRead(): void
+    {
+        $id = $this->insert(['label' => '{"value":"abc","minLength":1,"maxLength":5}']);
+
+        self::assertEquals(new BoundedString('abc', 1, 5), $this->find($id)->getAttribute('label'));
+    }
+
     public function testInvalidStoredValueFailsLoudly(): void
     {
         $id = $this->insert(['email' => 'not-an-email']);
@@ -182,6 +213,16 @@ final class AsValueObjectEloquentTest extends TestCase
         $customer->setAttribute('location', GeoCoordinates::fromFloats(1.5, 2.5));
 
         self::assertFalse($customer->isDirty('location'));
+    }
+
+    public function testStoredTrustedSourceOnlyValueIsComparedAsTrusted(): void
+    {
+        $id = $this->insert(['label' => '{ "value": "abc", "minLength": 1, "maxLength": 5 }']);
+        $customer = $this->find($id);
+
+        $customer->setAttribute('label', new BoundedString('abc', 1, 5));
+
+        self::assertFalse($customer->isDirty('label'));
     }
 
     public function testChangedValueIsDirty(): void

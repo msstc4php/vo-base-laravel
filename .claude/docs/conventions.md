@@ -20,10 +20,17 @@ Needed so PHPStan can narrow the untyped definition argument to a class-string; 
 still decides. The two messages differ ("expects exactly one value object class" vs "cannot cast to"), and the tests
 pin both — infection kills the boolean mutants only that way.
 
-## Rule refuses `BoundedString`
+## Trust boundary: storage is trusted, assignment and requests are not
 
-Its payload includes `minLength`/`maxLength`; from request input the client would pick the bounds. Casts may decode
-it (the DB is trusted), the rule may not. Coordinator decision 2026-11-11 UTC, applied in every bridge.
+`BoundedString`'s payload includes `minLength`/`maxLength`; from request input the client would pick the bounds. The
+core marks such codecs `TrustedSourceOnly` (vo-base 72d0fc5); the bridge never names the class itself:
+
+- `AsValueObject::get()`, `serialize()`, `compare()` read storage: `fromPayload()`.
+- `AsValueObject::set()` with a raw (non-instance) value: `fromUntrustedPayload()`, because `fill($request->all())`
+  reaches it. Assigning an instance is always fine.
+- `ValidValueObject`: `supportsUntrusted()` at construction, `fromUntrustedPayload()` in `validate()`.
+
+Coordinator decision 2026-11-11 UTC, applied in every bridge.
 
 ## Tests
 

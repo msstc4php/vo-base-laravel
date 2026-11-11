@@ -11,7 +11,6 @@ use LogicException;
 use MSSTC4PHP\ValueObject\Contract\ValueObject;
 use MSSTC4PHP\ValueObject\Exception\InvalidValueObjectException;
 use MSSTC4PHP\ValueObject\Payload\ValueObjectMapper;
-use MSSTC4PHP\ValueObject\Primitive\BoundedString;
 use Override;
 
 /**
@@ -30,7 +29,7 @@ final readonly class ValidValueObject implements ValidationRule
      * @param class-string<ValueObject|BackedEnum> $class
      * @param non-empty-string|null $message replaces DEFAULT_MESSAGE; `:attribute` and `:type` (the class's short name) are replaced
      *
-     * @throws LogicException when $class is not supported, or is BoundedString
+     * @throws LogicException when $class is not supported, or is trusted-source only (BoundedString)
      */
     public function __construct(
         private string $class,
@@ -41,9 +40,9 @@ final readonly class ValidValueObject implements ValidationRule
             throw new LogicException(\sprintf('%s cannot validate %s: it is neither a scalar-backed value object, a backed enum nor a class with a payload codec.', self::class, $class));
         }
 
-        // Its payload carries its own bounds, so request input would choose the limits it is checked against.
-        if (is_a($class, BoundedString::class, true)) {
-            throw new LogicException(\sprintf('%s does not validate %s from request input: validate the length with the min/max rules or use NonEmptyString.', self::class, BoundedString::class));
+        // Its payload carries its own constraints (BoundedString's bounds), so request input would choose them.
+        if (!$mapper->supportsUntrusted($class)) {
+            throw new LogicException(\sprintf('%s does not validate %s from request input: its payload carries its own constraints. For BoundedString, validate the length with the min/max rules or use NonEmptyString.', self::class, $class));
         }
     }
 
@@ -55,7 +54,7 @@ final readonly class ValidValueObject implements ValidationRule
         }
 
         try {
-            $this->mapper->fromPayload($this->class, $value);
+            $this->mapper->fromUntrustedPayload($this->class, $value);
         } catch (InvalidValueObjectException) {
             $fail($this->message ?? self::DEFAULT_MESSAGE)->translate(['type' => $this->shortClassName()]);
         }
