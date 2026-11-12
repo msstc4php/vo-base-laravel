@@ -11,6 +11,7 @@ use JsonException;
 use LogicException;
 use MSSTC4PHP\ValueObject\Contract\ValueObject;
 use MSSTC4PHP\ValueObject\Exception\InvalidValueObjectException;
+use MSSTC4PHP\ValueObject\Laravel\Internal\TypeLabel;
 use MSSTC4PHP\ValueObject\Payload\ValueObjectMapper;
 use Override;
 
@@ -61,18 +62,7 @@ final readonly class ValidValueObject implements ValidationRule
                 : $value;
             $this->mapper->fromUntrustedPayload($this->class, $payload);
         } catch (InvalidValueObjectException|JsonException) {
-            $fail($this->message ?? self::DEFAULT_MESSAGE)->translate(['type' => $this->typeLabel()]);
+            $fail($this->message ?? self::DEFAULT_MESSAGE)->translate(['type' => TypeLabel::of($this->class)]);
         }
-    }
-
-    /**
-     * EmailAddress becomes "email address": end users never see a class name.
-     */
-    private function typeLabel(): string
-    {
-        $separator = strrpos($this->class, '\\');
-        $short = $separator === false ? $this->class : substr($this->class, $separator + 1);
-
-        return strtolower((string) preg_replace('/(?<=[a-z0-9])(?=[A-Z])/', ' ', $short));
     }
 }

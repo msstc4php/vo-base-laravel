@@ -10,8 +10,35 @@ deptrac:
       collectors:
         - type: directory
           value: src/Rules/.*
+    - name: Http
+      collectors:
+        - type: directory
+          value: src/Http/.*
+    - name: Routing
+      collectors:
+        - type: directory
+          value: src/Routing/.*
+    - name: Internal
+      collectors:
+        - type: directory
+          value: src/Internal/.*
+    - name: Provider
+      collectors:
+        - type: classNameRegex
+          value: /^MSSTC4PHP\\ValueObject\\Laravel\\ValueObjectServiceProvider$/
   ruleset:
-    # Both depend on the core and Illuminate only; neither is declared as a layer.
+    # All depend on the core and Illuminate only; neither is declared as a layer.
     # The cast and the rule never see each other: an app may use either alone.
     Casts: ~
-    Rules: ~
+    Rules:
+      - Internal
+    # Request input reuses the rule's message, so a field error reads the same either way.
+    Http:
+      - Rules
+      - Internal
+    Routing:
+      - Internal
+    Internal: ~
+    Provider:
+      - Http
+      - Routing
