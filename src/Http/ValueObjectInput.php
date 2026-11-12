@@ -7,9 +7,10 @@ namespace MSSTC4PHP\ValueObject\Laravel\Http;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Translation\Translator;
 use Illuminate\Validation\ValidationException;
-use JsonException;
 use LogicException;
 use MSSTC4PHP\ValueObject\Exception\InvalidValueObjectException;
+use MSSTC4PHP\ValueObject\Laravel\Internal\CompositeJson;
+use MSSTC4PHP\ValueObject\Laravel\Internal\FieldName;
 use MSSTC4PHP\ValueObject\Laravel\Internal\TypeLabel;
 use MSSTC4PHP\ValueObject\Laravel\Rules\ValidValueObject;
 use MSSTC4PHP\ValueObject\Payload\ValueObjectMapper;
@@ -57,12 +58,8 @@ final readonly class ValueObjectInput
         }
 
         try {
-            $payload = \is_string($value) && $this->mapper->isComposite($class)
-                ? json_decode($value, true, flags: \JSON_THROW_ON_ERROR)
-                : $value;
-
-            return $this->mapper->fromUntrustedPayload($class, $payload);
-        } catch (InvalidValueObjectException|JsonException) {
+            return $this->mapper->fromUntrustedPayload($class, CompositeJson::payload($this->mapper, $class, $value));
+        } catch (InvalidValueObjectException) {
             throw ValidationException::withMessages([$key => $this->message($key, $class)]);
         }
     }
@@ -72,11 +69,11 @@ final readonly class ValueObjectInput
      */
     private function message(string $key, string $class): string
     {
-        $message = $this->translator->get(ValidValueObject::DEFAULT_MESSAGE, [
-            'attribute' => str_replace('_', ' ', $key),
-            'type' => TypeLabel::of($class),
-        ]);
+        $replace = ['attribute' => FieldName::of($key), 'type' => TypeLabel::of($class)];
+        $message = $this->translator->get(ValidValueObject::DEFAULT_MESSAGE, $replace);
 
-        return \is_string($message) ? $message : ValidValueObject::DEFAULT_MESSAGE;
+        return \is_string($message)
+            ? $message
+            : strtr(ValidValueObject::DEFAULT_MESSAGE, [':attribute' => $replace['attribute'], ':type' => $replace['type']]);
     }
 }

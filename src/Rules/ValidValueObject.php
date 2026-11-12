@@ -7,10 +7,10 @@ namespace MSSTC4PHP\ValueObject\Laravel\Rules;
 use BackedEnum;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
-use JsonException;
 use LogicException;
 use MSSTC4PHP\ValueObject\Contract\ValueObject;
 use MSSTC4PHP\ValueObject\Exception\InvalidValueObjectException;
+use MSSTC4PHP\ValueObject\Laravel\Internal\CompositeJson;
 use MSSTC4PHP\ValueObject\Laravel\Internal\TypeLabel;
 use MSSTC4PHP\ValueObject\Payload\ValueObjectMapper;
 use Override;
@@ -56,12 +56,8 @@ final readonly class ValidValueObject implements ValidationRule
         }
 
         try {
-            // A composite also arrives as JSON text (a form field, a query string), as the cast accepts it.
-            $payload = \is_string($value) && $this->mapper->isComposite($this->class)
-                ? json_decode($value, true, flags: \JSON_THROW_ON_ERROR)
-                : $value;
-            $this->mapper->fromUntrustedPayload($this->class, $payload);
-        } catch (InvalidValueObjectException|JsonException) {
+            $this->mapper->fromUntrustedPayload($this->class, CompositeJson::payload($this->mapper, $this->class, $value));
+        } catch (InvalidValueObjectException) {
             $fail($this->message ?? self::DEFAULT_MESSAGE)->translate(['type' => TypeLabel::of($this->class)]);
         }
     }

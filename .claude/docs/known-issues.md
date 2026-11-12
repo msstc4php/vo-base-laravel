@@ -71,8 +71,8 @@ route runs `RouteValueObjectBinder`. `make test` (no coverage) does not show it.
 Rector imports names after cs-fixer has ordered the imports, so a single `make fix` can leave `ordered_imports` for
 `make check` to report.
 
-## `--prefer-lowest` resolves Laravel 13.30, not 13.0
+## Floor is Laravel 13.30 because of testbench
 
 `orchestra/testbench` 11.0.0 (the lowest 11.x) needs `laravel/framework` >= 13.30, and the monolith replaces every
-`illuminate/*` split, so the lowest-deps job (2026-11-12 UTC) tests the cast and the rule on 13.30.0 too. Runtime
-constraints stay `^13.0`; 0.1.0 had verified 13.0.0 before testbench was a dev dependency.
+`illuminate/*` split, so `--prefer-lowest` cannot install anything older. Coordinator ruling 2026-11-12 UTC: the
+declared floor follows what CI proves, so 0.2.0 requires `illuminate/*` `^13.30` (0.1.0 had `^13.0`).

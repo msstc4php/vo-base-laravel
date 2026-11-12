@@ -11,6 +11,7 @@ use LogicException;
 use MSSTC4PHP\ValueObject\I18n\CountryCode;
 use MSSTC4PHP\ValueObject\Identity\EmailAddress;
 use MSSTC4PHP\ValueObject\Laravel\Http\RequestMacros;
+use MSSTC4PHP\ValueObject\Laravel\Internal\FieldName;
 use MSSTC4PHP\ValueObject\Laravel\Internal\TypeLabel;
 use MSSTC4PHP\ValueObject\Laravel\Routing\RouteValueObjectBinder;
 use MSSTC4PHP\ValueObject\Laravel\Tests\ApplicationTestCase;
@@ -26,6 +27,7 @@ use PHPUnit\Framework\Attributes\UsesClass;
  * Full HTTP round trips through the router, the middleware stack and the exception handler.
  */
 #[CoversClass(RouteValueObjectBinder::class)]
+#[UsesClass(FieldName::class)]
 #[UsesClass(RequestMacros::class)]
 #[UsesClass(ValueObjectServiceProvider::class)]
 #[UsesClass(TypeLabel::class)]
@@ -55,6 +57,11 @@ final class RouteBindingTest extends ApplicationTestCase
     public function testSnakeCaseRouteParameterBindsTheCamelCaseArgument(): void
     {
         $this->get('/snake/jane@example.com')->assertOk()->assertContent('jane@example.com');
+    }
+
+    public function testInvalidSnakeCaseParameterNamesItInWords(): void
+    {
+        $this->getJson('/snake/nope')->assertNotFound()->assertExactJson(['message' => 'The user email route parameter is not a valid email address.']);
     }
 
     public function testOptionalParameterAbsentIsNull(): void

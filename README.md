@@ -10,7 +10,7 @@ Laravel glue for [`msstc4php/vo-base`][core] value objects:
 
 The last three come from `ValueObjectServiceProvider`, which Laravel's package discovery registers.
 
-Requires PHP >= 8.4 and Laravel 13 (`illuminate/database`, `illuminate/validation` `^13.0`). The cast and the rule
+Requires PHP >= 8.4 and Laravel 13.30+ (`illuminate/database`, `illuminate/validation` `^13.30`). The cast and the rule
 work with those components alone (Capsule included); request input, form requests and route parameters need an
 application on `laravel/framework`. Laravel 12 cannot be supported: every 12.x release caps `brick/math` below 0.15,
 which the core declares as a conflict.
@@ -137,7 +137,8 @@ public function store(Request $request)
 - Invalid input throws `ValidationException` for that key, which Laravel answers with 422 and
   `{"errors": {"email": ["The email field is not a valid email address."]}}` (a redirect back with errors for a
   form). The message is the rule's (`ValidValueObject::DEFAULT_MESSAGE`, translated through `lang/<locale>.json`),
-  with `_` in the key read as a space. An array where a string is expected is invalid input, not an error page.
+  with `_` in the key read as a space. If the translator returns no string for it, the untranslated message is used
+  with both placeholders filled in. An array where a string is expected is invalid input, not an error page.
   Unlike `$request->enum()`, there is no silent fallback to a default: that would hide a client error.
 - Composites take an array (JSON body) or JSON text (a form field or a query string).
 - `BoundedString` and any other trusted-source-only class are always a field error: their payload carries its own
@@ -188,15 +189,19 @@ Route::get('/ports/{port?}', fn (?Port $port = null) => $port?->value ?? 80);
 
 - An action argument (closure or controller method) typed with a scalar-backed value object receives it, built from
   the route parameter of the same name or its snake_case form, as Laravel's implicit binding matches them.
-- An invalid value is a 404, with the message `The email route parameter is not a valid email address.`.
-- Nullable arguments for optional parameters need a default (`?Port $port = null`), as for Laravel's own bindings:
-  without one Laravel tries to build the class from the container.
+- An invalid value is a 404, with the message `The email route parameter is not a valid email address.`; `_` in the
+  parameter name reads as a space, as in request input errors (`{user_email}` → "The user email route parameter …").
+- Nullable arguments for optional parameters need a default (`?Port $port = null`). This is the same rule as
+  Laravel's optional model binding: without a default, Laravel drops the missing parameter and tries to build the
+  class from the container, which is a 500 that the package cannot prevent.
 - Left alone: backed enums (Laravel binds them), parameters with an explicit `Route::bind()` / `Route::model()`
   (an `EmailAddress` your binder returns reaches the argument unchanged), values that already are the value object,
   union and intersection types, and classes the mapper does not support.
 - An argument typed with a composite (`GeoCoordinates`) or a trusted-source-only class (`BoundedString`) is a
   `LogicException` naming the argument: a URL segment is one string and must not choose its own constraints.
-- The conversion runs on Laravel's `RouteMatched` event, before the route's middleware.
+- The conversion runs on Laravel's `RouteMatched` event, before **all** route middleware. An invalid segment is a
+  404 even where `auth` would have answered 401 or 403. Middleware that reads `$request->route('email')` sees the
+  value object, not the string.
 
 ## Custom codecs
 

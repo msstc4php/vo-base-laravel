@@ -10,6 +10,8 @@ use MSSTC4PHP\ValueObject\Identity\EmailAddress;
 use MSSTC4PHP\ValueObject\Laravel\Http\RequestMacros;
 use MSSTC4PHP\ValueObject\Laravel\Http\ValidatedValueObjects;
 use MSSTC4PHP\ValueObject\Laravel\Http\ValueObjectInput;
+use MSSTC4PHP\ValueObject\Laravel\Internal\CompositeJson;
+use MSSTC4PHP\ValueObject\Laravel\Internal\FieldName;
 use MSSTC4PHP\ValueObject\Laravel\Internal\TypeLabel;
 use MSSTC4PHP\ValueObject\Laravel\Routing\RouteValueObjectBinder;
 use MSSTC4PHP\ValueObject\Laravel\Rules\ValidValueObject;
@@ -22,6 +24,8 @@ use PHPUnit\Framework\Attributes\CoversTrait;
 use PHPUnit\Framework\Attributes\UsesClass;
 
 #[CoversTrait(ValidatedValueObjects::class)]
+#[UsesClass(FieldName::class)]
+#[UsesClass(CompositeJson::class)]
 #[UsesClass(RequestMacros::class)]
 #[UsesClass(RouteValueObjectBinder::class)]
 #[UsesClass(ValueObjectInput::class)]

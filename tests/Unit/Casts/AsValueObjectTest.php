@@ -7,17 +7,20 @@ namespace MSSTC4PHP\ValueObject\Laravel\Tests\Unit\Casts;
 use LogicException;
 use MSSTC4PHP\ValueObject\Identity\EmailAddress;
 use MSSTC4PHP\ValueObject\Laravel\Casts\AsValueObject;
+use MSSTC4PHP\ValueObject\Laravel\Internal\CompositeJson;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Customer;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\MisconfiguredCustomer;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\UnmappedValueObject;
 use MSSTC4PHP\ValueObject\Network\Port;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
 use stdClass;
 
 #[CoversClass(AsValueObject::class)]
+#[UsesClass(CompositeJson::class)]
 final class AsValueObjectTest extends TestCase
 {
     public function testOfBuildsTheStringDefinition(): void

@@ -56,7 +56,10 @@ Laravel itself does not run a non-implicit rule for `''` (and for missing attrib
 - The message is `Translator::get(DEFAULT_MESSAGE, [attribute, type])`, which looks the text up in JSON translations
   and replaces both placeholders itself. The validator's custom attribute names (`validation.attributes`) are not
   applied: there is no validator here. `_` in the key becomes a space, as the validator displays attributes.
-- `ValidationException::withMessages()` gives status 422; it has no way to chain the core exception (no previous).
+- `ValidationException::withMessages()` gives status 422; it has no way to chain the core exception (no previous),
+  and it needs the Validator facade, so even a direct `ValueObjectInput` test needs a booted application.
+- `Translator::get()` may return an array (a translation group named like the key); the fallback is
+  `DEFAULT_MESSAGE` with `:attribute`/`:type` replaced by `strtr`.
 
 ## Form requests — `ValidatedValueObjects`
 
@@ -79,4 +82,7 @@ Laravel 13 order inside `Router::runRoute()`: `RouteMatched` is dispatched, then
 - An absent optional parameter is not in `parameters()` at all (`RouteParameterBinder` drops empty matches).
 - `Route::signatureParameters()` is untyped (`array`), hence the `instanceof ReflectionParameter` narrowing.
 - `NotFoundHttpException`'s message reaches the client: the JSON 404 is `{"message": "..."}` even with
-  `app.debug=false`, so it carries the parameter name and the type label only.
+  `app.debug=false`, so it carries the parameter name (`FieldName`, `_` → space, as the 422 path) and the type label
+  only.
+- Because the listener runs before all route middleware, an invalid segment is a 404 before `auth` can answer
+  401/403, and middleware reading `$request->route('email')` gets the value object.

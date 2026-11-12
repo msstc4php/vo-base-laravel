@@ -9,6 +9,7 @@ use Illuminate\Routing\Router;
 use Illuminate\Support\Str;
 use LogicException;
 use MSSTC4PHP\ValueObject\Exception\InvalidValueObjectException;
+use MSSTC4PHP\ValueObject\Laravel\Internal\FieldName;
 use MSSTC4PHP\ValueObject\Laravel\Internal\TypeLabel;
 use MSSTC4PHP\ValueObject\Payload\ValueObjectMapper;
 use ReflectionNamedType;
@@ -69,7 +70,7 @@ final readonly class RouteValueObjectBinder
             try {
                 $route->setParameter($key, $this->mapper->fromUntrustedPayload($class, $value));
             } catch (InvalidValueObjectException $exception) {
-                throw new NotFoundHttpException(\sprintf('The %s route parameter is not a valid %s.', $key, TypeLabel::of($class)), $exception);
+                throw new NotFoundHttpException(\sprintf('The %s route parameter is not a valid %s.', FieldName::of($key), TypeLabel::of($class)), $exception);
             }
         }
     }

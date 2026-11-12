@@ -12,6 +12,8 @@ use MSSTC4PHP\ValueObject\Geo\GeoCoordinates;
 use MSSTC4PHP\ValueObject\Identity\EmailAddress;
 use MSSTC4PHP\ValueObject\Laravel\Http\RequestMacros;
 use MSSTC4PHP\ValueObject\Laravel\Http\ValueObjectInput;
+use MSSTC4PHP\ValueObject\Laravel\Internal\CompositeJson;
+use MSSTC4PHP\ValueObject\Laravel\Internal\FieldName;
 use MSSTC4PHP\ValueObject\Laravel\Internal\TypeLabel;
 use MSSTC4PHP\ValueObject\Laravel\Tests\ApplicationTestCase;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Dimensions;
@@ -26,6 +28,8 @@ use PHPUnit\Framework\Attributes\UsesClass;
 use stdClass;
 
 #[CoversClass(RequestMacros::class)]
+#[UsesClass(FieldName::class)]
+#[UsesClass(CompositeJson::class)]
 #[CoversClass(ValueObjectInput::class)]
 #[UsesClass(ValueObjectServiceProvider::class)]
 #[UsesClass(TypeLabel::class)]

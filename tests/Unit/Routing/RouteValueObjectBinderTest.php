@@ -14,6 +14,7 @@ use LogicException;
 use MSSTC4PHP\ValueObject\Geo\GeoCoordinates;
 use MSSTC4PHP\ValueObject\I18n\CountryCode;
 use MSSTC4PHP\ValueObject\Identity\EmailAddress;
+use MSSTC4PHP\ValueObject\Laravel\Internal\FieldName;
 use MSSTC4PHP\ValueObject\Laravel\Internal\TypeLabel;
 use MSSTC4PHP\ValueObject\Laravel\Routing\RouteValueObjectBinder;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Dimensions;
@@ -31,6 +32,7 @@ use stdClass;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 #[CoversClass(RouteValueObjectBinder::class)]
+#[UsesClass(FieldName::class)]
 #[UsesClass(TypeLabel::class)]
 final class RouteValueObjectBinderTest extends TestCase
 {
@@ -78,16 +80,20 @@ final class RouteValueObjectBinderTest extends TestCase
             $this->bind('/users/{user_email}', static fn (EmailAddress $userEmail): null => null, '/users/nope');
             self::fail('No NotFoundHttpException thrown.');
         } catch (NotFoundHttpException $exception) {
-            self::assertSame('The user_email route parameter is not a valid email address.', $exception->getMessage());
+            self::assertSame('The user email route parameter is not a valid email address.', $exception->getMessage());
             self::assertNotNull($exception->getPrevious());
         }
     }
 
-    public function testAbsentOptionalParameterIsLeftOut(): void
+    public function testAbsentOptionalParameterIsNotAddedByTheBinder(): void
     {
-        $route = $this->bind('/users/{email?}', static fn (?EmailAddress $email = null): null => null, '/users');
+        $route = $this->route('/users/{email?}', static fn (?EmailAddress $email = null): null => null, '/users');
+        $before = $route->parameters();
 
-        self::assertSame([], $route->parameters());
+        $this->dispatch($route);
+
+        self::assertSame($before, $route->parameters());
+        self::assertFalse($route->hasParameter('email'));
     }
 
     public function testNullParameterStaysNull(): void

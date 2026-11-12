@@ -15,6 +15,7 @@ use LogicException;
 use MSSTC4PHP\ValueObject\Contract\ValueObject;
 use MSSTC4PHP\ValueObject\Exception\InvalidPayloadException;
 use MSSTC4PHP\ValueObject\Exception\InvalidValueObjectException;
+use MSSTC4PHP\ValueObject\Laravel\Internal\CompositeJson;
 use MSSTC4PHP\ValueObject\Payload\ValueObjectMapper;
 use Override;
 
@@ -173,21 +174,11 @@ final readonly class AsValueObject implements Castable, CastsAttributes, Compare
             return $value;
         }
 
-        // SQL hands a composite over as JSON text; the mapper wants the decoded array.
-        $payload = \is_string($value) && $this->mapper->isComposite($this->class) ? $this->decodeJson($value) : $value;
+        $payload = CompositeJson::payload($this->mapper, $this->class, $value);
 
         return $trusted
             ? $this->mapper->fromPayload($this->class, $payload)
             : $this->mapper->fromUntrustedPayload($this->class, $payload);
-    }
-
-    private function decodeJson(string $json): mixed
-    {
-        try {
-            return json_decode($json, true, flags: \JSON_THROW_ON_ERROR);
-        } catch (JsonException $exception) {
-            throw new InvalidPayloadException(\sprintf('A %s payload must be JSON text, invalid JSON given.', $this->class), $exception->getCode(), previous: $exception);
-        }
     }
 
     /**

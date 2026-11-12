@@ -8,7 +8,8 @@ and fails with `InvalidPayloadException`. Rejecting raw values would break `fill
 
 ## JSON decoding is decided by `isComposite()`
 
-`toValueObject()` decodes a string as JSON only when `ValueObjectMapper::isComposite($class)` (the class has a codec;
+`Internal\CompositeJson::payload()` (used by the cast, the rule and the request input) decodes a string as JSON only
+when `ValueObjectMapper::isComposite($class)` (the class has a codec;
 core 8c795e1). Invalid JSON is an `InvalidPayloadException` (code = the `JsonException` code). The bridge never names
 value-object kinds itself; `JsonString` columns stay strings because `JsonString` has no codec.
 

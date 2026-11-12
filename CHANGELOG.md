@@ -14,7 +14,8 @@
   enums, explicit bindings, instances and union types to Laravel; composite or trusted-source-only argument types
   are a `LogicException`.
 - The rule's `:type` label moved to an internal helper shared with the new messages; behaviour unchanged.
-- `laravel/framework` is suggested for the HTTP features; runtime requirements unchanged.
+- Requires Laravel 13.30+: `illuminate/*` `^13.30` (was `^13.0`), the lowest version the test suite proves.
+  `laravel/framework` `^13.30` is suggested for the HTTP features.
 
 ## 0.1.0 - 2026-11-11
 

@@ -29,7 +29,8 @@ deptrac:
   ruleset:
     # All depend on the core and Illuminate only; neither is declared as a layer.
     # The cast and the rule never see each other: an app may use either alone.
-    Casts: ~
+    Casts:
+      - Internal
     Rules:
       - Internal
     # Request input reuses the rule's message, so a field error reads the same either way.
