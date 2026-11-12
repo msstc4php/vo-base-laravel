@@ -7,9 +7,11 @@ namespace MSSTC4PHP\ValueObject\Laravel\Tests\Unit\Http;
 use Illuminate\Support\Facades\Route;
 use MSSTC4PHP\ValueObject\Geo\GeoCoordinates;
 use MSSTC4PHP\ValueObject\Identity\EmailAddress;
+use MSSTC4PHP\ValueObject\Laravel\Http\RequestMacros;
 use MSSTC4PHP\ValueObject\Laravel\Http\ValidatedValueObjects;
 use MSSTC4PHP\ValueObject\Laravel\Http\ValueObjectInput;
 use MSSTC4PHP\ValueObject\Laravel\Internal\TypeLabel;
+use MSSTC4PHP\ValueObject\Laravel\Routing\RouteValueObjectBinder;
 use MSSTC4PHP\ValueObject\Laravel\Rules\ValidValueObject;
 use MSSTC4PHP\ValueObject\Laravel\Tests\ApplicationTestCase;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\CustomerRequest;
@@ -20,6 +22,8 @@ use PHPUnit\Framework\Attributes\CoversTrait;
 use PHPUnit\Framework\Attributes\UsesClass;
 
 #[CoversTrait(ValidatedValueObjects::class)]
+#[UsesClass(RequestMacros::class)]
+#[UsesClass(RouteValueObjectBinder::class)]
 #[UsesClass(ValueObjectInput::class)]
 #[UsesClass(ValidValueObject::class)]
 #[UsesClass(ValueObjectServiceProvider::class)]

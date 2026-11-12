@@ -146,6 +146,7 @@ final class RequestValueObjectTest extends ApplicationTestCase
     public function testAClassNameThatIsNoClassIsAProgrammingError(): void
     {
         $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('"NoSuchClass" is not a class');
 
         $request = Request::create('/');
         $request->__call('valueObject', ['email', 'NoSuchClass']);
