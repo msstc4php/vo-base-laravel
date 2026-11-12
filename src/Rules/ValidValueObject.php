@@ -11,6 +11,7 @@ use LogicException;
 use MSSTC4PHP\ValueObject\Contract\ValueObject;
 use MSSTC4PHP\ValueObject\Exception\InvalidValueObjectException;
 use MSSTC4PHP\ValueObject\Laravel\Internal\CompositeJson;
+use MSSTC4PHP\ValueObject\Laravel\Internal\Messages;
 use MSSTC4PHP\ValueObject\Laravel\Internal\TypeLabel;
 use MSSTC4PHP\ValueObject\Payload\ValueObjectMapper;
 use Override;
@@ -25,7 +26,7 @@ final readonly class ValidValueObject implements ValidationRule
     /**
      * Also the translation key: a `lang/<locale>.json` entry with this text translates it.
      */
-    public const string DEFAULT_MESSAGE = 'The :attribute field is not a valid :type.';
+    public const string DEFAULT_MESSAGE = Messages::INVALID;
 
     /**
      * @param class-string<ValueObject|BackedEnum> $class

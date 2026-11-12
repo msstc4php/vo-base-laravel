@@ -12,7 +12,10 @@
 - `Routing\RouteValueObjectBinder`: a `RouteMatched` listener turning route parameters into the scalar-backed value
   objects the action arguments are typed with (name or snake_case name); invalid → 404 without a class name. Leaves
   enums, explicit bindings, instances and union types to Laravel; composite or trusted-source-only argument types
-  are a `LogicException`.
+  are a `LogicException`, whether or not the segment is present. Runs before all route middleware.
+- Field names in the new messages follow Laravel's validator: form request `attributes()`, then
+  `validation.attributes.<key>`, then the key in words (`userEmail` → "user email").
+- An application `valueObject` macro on `Request` registered before the provider boots is kept.
 - The rule's `:type` label moved to an internal helper shared with the new messages; behaviour unchanged.
 - Requires Laravel 13.30+: `illuminate/*` `^13.30` (was `^13.0`), the lowest version the test suite proves.
   `laravel/framework` `^13.30` is suggested for the HTTP features.

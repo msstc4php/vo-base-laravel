@@ -53,9 +53,13 @@ Laravel itself does not run a non-implicit rule for `''` (and for missing attrib
 - PHPStan does not apply `@template` / `@param` PHPDoc written on a closure, so `$class` is narrowed with
   `class_exists()` (also true for enums) inside the macro.
 - Mapper and translator: `Container::getInstance()`; `Request` has no container reference.
+- `RequestMacros::register()` returns early when `Request::hasMacro('valueObject')`: an application macro wins.
+  Tests that flush macros must re-register ours in `finally`, because macros are static and outlive the app.
 - The message is `Translator::get(DEFAULT_MESSAGE, [attribute, type])`, which looks the text up in JSON translations
-  and replaces both placeholders itself. The validator's custom attribute names (`validation.attributes`) are not
-  applied: there is no validator here. `_` in the key becomes a space, as the validator displays attributes.
+  and replaces both placeholders itself. The field name follows `Validator::getDisplayableAttribute()` via
+  `Internal\FieldName::of($key, $translator, $custom)`: custom attributes (the form request's `attributes()`, trait
+  path only), then `validation.attributes.<key>` (a string other than the key itself), then
+  `str_replace('_', ' ', Str::snake($key))`.
 - `ValidationException::withMessages()` gives status 422; it has no way to chain the core exception (no previous),
   and it needs the Validator facade, so even a direct `ValueObjectInput` test needs a booted application.
 - `Translator::get()` may return an array (a translation group named like the key); the fallback is
@@ -74,6 +78,9 @@ Laravel 13 order inside `Router::runRoute()`: `RouteMatched` is dispatched, then
 `SubstituteBindings` (web/api groups) does explicit bindings (`Router::substituteBindings()`, binders keyed with
 `-` → `_`) and then implicit ones (`ImplicitRouteBinding`: backed enums first, then `UrlRoutable`).
 
+- Order of checks: no single named type / builtin / enum / unsupported / explicit binder → skip; trusted-only or
+  composite → `LogicException` (also when the segment is absent or null: the declaration is wrong for every request);
+  absent / null / instance → skip; else convert, invalid → 404 (`FieldName` with the container's translator).
 - The binder runs first, so it must skip parameters with `Router::getBindingCallback($key)`: otherwise a user's
   `Route::bind('email', fn (string $v) => ...)` would receive our value object instead of the string.
 - Parameter lookup mirrors `ImplicitRouteBinding::getParameterName()`: exact name, then `Str::snake($name)`.

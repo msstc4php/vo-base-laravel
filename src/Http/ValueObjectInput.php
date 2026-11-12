@@ -11,8 +11,8 @@ use LogicException;
 use MSSTC4PHP\ValueObject\Exception\InvalidValueObjectException;
 use MSSTC4PHP\ValueObject\Laravel\Internal\CompositeJson;
 use MSSTC4PHP\ValueObject\Laravel\Internal\FieldName;
+use MSSTC4PHP\ValueObject\Laravel\Internal\Messages;
 use MSSTC4PHP\ValueObject\Laravel\Internal\TypeLabel;
-use MSSTC4PHP\ValueObject\Laravel\Rules\ValidValueObject;
 use MSSTC4PHP\ValueObject\Payload\ValueObjectMapper;
 
 /**
@@ -37,13 +37,14 @@ final readonly class ValueObjectInput
      * @template T of object
      *
      * @param class-string<T> $class
+     * @param array<array-key, mixed> $attributes custom attribute names (a form request's `attributes()`)
      *
      * @return T|null null for a missing, null or '' value
      *
      * @throws ValidationException when the value is not a valid T, or T is trusted-source only
      * @throws LogicException when the mapper does not support T
      */
-    public function convert(string $key, mixed $value, string $class): ?object
+    public function convert(string $key, mixed $value, string $class, array $attributes = []): ?object
     {
         if (!$this->mapper->supports($class)) {
             throw new LogicException(\sprintf('%s is neither a scalar-backed value object, a backed enum nor a class with a payload codec, so input "%s" cannot become one.', $class, $key));
@@ -60,20 +61,21 @@ final readonly class ValueObjectInput
         try {
             return $this->mapper->fromUntrustedPayload($class, CompositeJson::payload($this->mapper, $class, $value));
         } catch (InvalidValueObjectException) {
-            throw ValidationException::withMessages([$key => $this->message($key, $class)]);
+            throw ValidationException::withMessages([$key => $this->message($key, $class, $attributes)]);
         }
     }
 
     /**
      * @param class-string $class
+     * @param array<array-key, mixed> $attributes
      */
-    private function message(string $key, string $class): string
+    private function message(string $key, string $class, array $attributes): string
     {
-        $replace = ['attribute' => FieldName::of($key), 'type' => TypeLabel::of($class)];
-        $message = $this->translator->get(ValidValueObject::DEFAULT_MESSAGE, $replace);
+        $replace = ['attribute' => FieldName::of($key, $this->translator, $attributes), 'type' => TypeLabel::of($class)];
+        $message = $this->translator->get(Messages::INVALID, $replace);
 
         return \is_string($message)
             ? $message
-            : strtr(ValidValueObject::DEFAULT_MESSAGE, [':attribute' => $replace['attribute'], ':type' => $replace['type']]);
+            : strtr(Messages::INVALID, [':attribute' => $replace['attribute'], ':type' => $replace['type']]);
     }
 }

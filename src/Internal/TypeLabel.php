@@ -11,6 +11,10 @@ namespace MSSTC4PHP\ValueObject\Laravel\Internal;
  */
 final class TypeLabel
 {
+    private function __construct()
+    {
+    }
+
     /**
      * @param class-string $class
      */

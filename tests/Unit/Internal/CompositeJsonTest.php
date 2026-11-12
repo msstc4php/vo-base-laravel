@@ -31,6 +31,12 @@ final class CompositeJsonTest extends TestCase
         self::assertSame('"a@b.c"', CompositeJson::payload(new ValueObjectMapper(), EmailAddress::class, '"a@b.c"'));
     }
 
+    public function testJsonTextThatIsNoObjectStaysTheString(): void
+    {
+        self::assertSame('"52.52,13.405"', CompositeJson::payload(new ValueObjectMapper(), GeoCoordinates::class, '"52.52,13.405"'));
+        self::assertSame('12', CompositeJson::payload(new ValueObjectMapper(), GeoCoordinates::class, '12'));
+    }
+
     public function testInvalidJsonIsAnInvalidPayload(): void
     {
         try {

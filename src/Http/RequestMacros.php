@@ -15,8 +15,15 @@ use LogicException;
  */
 final class RequestMacros
 {
+    /**
+     * An application macro of the same name wins: it is left in place.
+     */
     public static function register(): void
     {
+        if (Request::hasMacro('valueObject')) {
+            return;
+        }
+
         Request::macro('valueObject', function (string $key, string $class): ?object {
             if (!class_exists($class)) {
                 throw new LogicException(\sprintf('"%s" is not a class, so input "%s" cannot become one.', $class, $key));

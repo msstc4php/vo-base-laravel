@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace MSSTC4PHP\ValueObject\Laravel\Routing;
 
+use Illuminate\Contracts\Translation\Translator;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Str;
@@ -29,6 +30,7 @@ final readonly class RouteValueObjectBinder
     public function __construct(
         private ValueObjectMapper $mapper,
         private Router $router,
+        private Translator $translator,
     ) {
     }
 
@@ -50,12 +52,7 @@ final readonly class RouteValueObjectBinder
             $class = $type->getName();
             $name = $argument->getName();
             $key = \array_key_exists($name, $parameters) ? $name : Str::snake($name);
-            if (enum_exists($class) || !$this->mapper->supports($class) || !\array_key_exists($key, $parameters) || $this->router->getBindingCallback($key) !== null) {
-                continue;
-            }
-
-            $value = $parameters[$key];
-            if ($value === null || $value instanceof $class) {
+            if (enum_exists($class) || !$this->mapper->supports($class) || $this->router->getBindingCallback($key) !== null) {
                 continue;
             }
 
@@ -67,10 +64,15 @@ final readonly class RouteValueObjectBinder
                 throw new LogicException(\sprintf('Route parameter $%s is typed %s, a composite value object; a route segment is one string, so only scalar-backed value objects bind.', $name, $class));
             }
 
+            $value = $parameters[$key] ?? null;
+            if ($value === null || $value instanceof $class) {
+                continue;
+            }
+
             try {
                 $route->setParameter($key, $this->mapper->fromUntrustedPayload($class, $value));
             } catch (InvalidValueObjectException $exception) {
-                throw new NotFoundHttpException(\sprintf('The %s route parameter is not a valid %s.', FieldName::of($key), TypeLabel::of($class)), $exception);
+                throw new NotFoundHttpException(\sprintf('The %s route parameter is not a valid %s.', FieldName::of($key, $this->translator), TypeLabel::of($class)), $exception);
             }
         }
     }

@@ -137,15 +137,19 @@ public function store(Request $request)
 - Invalid input throws `ValidationException` for that key, which Laravel answers with 422 and
   `{"errors": {"email": ["The email field is not a valid email address."]}}` (a redirect back with errors for a
   form). The message is the rule's (`ValidValueObject::DEFAULT_MESSAGE`, translated through `lang/<locale>.json`),
-  with `_` in the key read as a space. If the translator returns no string for it, the untranslated message is used
-  with both placeholders filled in. An array where a string is expected is invalid input, not an error page.
+  with the field named as Laravel's validator names it: a `validation.attributes.<key>` translation if there is one,
+  else the key in words (`user_email` and `userEmail` both read "user email"). If the translator returns no string
+  for the message, the untranslated message is used with both placeholders filled in. An array where a string is expected is invalid input, not an error page.
   Unlike `$request->enum()`, there is no silent fallback to a default: that would hide a client error.
 - Composites take an array (JSON body) or JSON text (a form field or a query string).
 - `BoundedString` and any other trusted-source-only class are always a field error: their payload carries its own
   constraints.
 - An unsupported class (`stdClass`) is a `LogicException`, whether the field is filled or not.
 
-PHPStan sees the macro only with Larastan; without it, call it from a form request with the trait below.
+- If the application already registered a `valueObject` macro on `Request`, the package leaves it in place.
+
+The macro is untyped for static analysis (PHPStan sees it only through Larastan, and then as `mixed`); the form
+request trait below is the typed path.
 
 ## Form requests
 
@@ -175,6 +179,7 @@ public function store(StoreCustomerRequest $request)
   cleanly. A key that is not in `rules()` returns `null`, even when the client sent it.
 - Same rules as the request macro otherwise (`null` for empty, composites from an array or JSON text), and it is
   typed for PHPStan: `valueObject(string $key, class-string<T> $class): ?T`.
+- A field error names the field through the form request's `attributes()` first, as the validator does.
 - On a form request using the trait, `valueObject()` is the trait's (validated data), not the request macro.
 - `$request->safe()` returns Laravel's `ValidatedInput`, which is not macroable, so there is no
   `safe()->valueObject()`.
@@ -189,19 +194,23 @@ Route::get('/ports/{port?}', fn (?Port $port = null) => $port?->value ?? 80);
 
 - An action argument (closure or controller method) typed with a scalar-backed value object receives it, built from
   the route parameter of the same name or its snake_case form, as Laravel's implicit binding matches them.
-- An invalid value is a 404, with the message `The email route parameter is not a valid email address.`; `_` in the
-  parameter name reads as a space, as in request input errors (`{user_email}` → "The user email route parameter …").
+- An invalid value is a 404, with the message `The email route parameter is not a valid email address.`. The
+  parameter is named as in request input errors: a `validation.attributes.<name>` translation, else the name in
+  words (`{user_email}` → "The user email route parameter …").
 - Nullable arguments for optional parameters need a default (`?Port $port = null`). This is the same rule as
   Laravel's optional model binding: without a default, Laravel drops the missing parameter and tries to build the
   class from the container, which is a 500 that the package cannot prevent.
+- An argument typed with a composite (`GeoCoordinates`) or a trusted-source-only class (`BoundedString`) is a
+  `LogicException` naming the argument, on every request to the route, whether or not the segment is present: a
+  URL segment is one string and must not choose its own constraints. An explicit `Route::bind()` for that
+  parameter takes it over instead.
 - Left alone: backed enums (Laravel binds them), parameters with an explicit `Route::bind()` / `Route::model()`
   (an `EmailAddress` your binder returns reaches the argument unchanged), values that already are the value object,
   union and intersection types, and classes the mapper does not support.
-- An argument typed with a composite (`GeoCoordinates`) or a trusted-source-only class (`BoundedString`) is a
-  `LogicException` naming the argument: a URL segment is one string and must not choose its own constraints.
 - The conversion runs on Laravel's `RouteMatched` event, before **all** route middleware. An invalid segment is a
   404 even where `auth` would have answered 401 or 403. Middleware that reads `$request->route('email')` sees the
-  value object, not the string.
+  value object, not the string. Invalid-segment requests are also answered before `throttle`, so they do not count
+  against the rate limit. This order differs from Symfony, where the firewall runs before the argument resolvers.
 
 ## Custom codecs
 

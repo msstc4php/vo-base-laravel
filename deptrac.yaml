@@ -27,15 +27,14 @@ deptrac:
         - type: classNameRegex
           value: /^MSSTC4PHP\\ValueObject\\Laravel\\ValueObjectServiceProvider$/
   ruleset:
-    # All depend on the core and Illuminate only; neither is declared as a layer.
-    # The cast and the rule never see each other: an app may use either alone.
+    # The core and Illuminate are not layers, so every layer may use them.
+    # Casts, Rules, Http and Routing never see each other: an app may use any of them alone.
+    # Internal holds the shared helpers (labels, the message, composite JSON) and depends on nothing here.
     Casts:
       - Internal
     Rules:
       - Internal
-    # Request input reuses the rule's message, so a field error reads the same either way.
     Http:
-      - Rules
       - Internal
     Routing:
       - Internal

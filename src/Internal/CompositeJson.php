@@ -15,10 +15,17 @@ use MSSTC4PHP\ValueObject\Payload\ValueObjectMapper;
  */
 final class CompositeJson
 {
+    private function __construct()
+    {
+    }
+
     /**
-     * @param class-string $class
+     * @template TValue the input, returned unchanged unless it is the JSON text of a composite
      *
-     * @return mixed the decoded JSON for a composite given as a string, $value otherwise
+     * @param class-string $class
+     * @param TValue $value
+     *
+     * @return TValue|array<array-key, mixed> the decoded JSON object for a composite given as a string, $value otherwise
      *
      * @throws InvalidPayloadException when the text is not valid JSON
      */
@@ -29,9 +36,12 @@ final class CompositeJson
         }
 
         try {
-            return json_decode($value, true, flags: \JSON_THROW_ON_ERROR);
+            $decoded = json_decode($value, true, flags: \JSON_THROW_ON_ERROR);
         } catch (JsonException $exception) {
             throw new InvalidPayloadException(\sprintf('A %s payload must be JSON text, invalid JSON given.', $class), $exception->getCode(), previous: $exception);
         }
+
+        // JSON text that is no object stays the string it was, for the mapper's "string given".
+        return \is_array($decoded) ? $decoded : $value;
     }
 }

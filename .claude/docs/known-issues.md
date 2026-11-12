@@ -76,3 +76,13 @@ Rector imports names after cs-fixer has ordered the imports, so a single `make f
 `orchestra/testbench` 11.0.0 (the lowest 11.x) needs `laravel/framework` >= 13.30, and the monolith replaces every
 `illuminate/*` split, so `--prefer-lowest` cannot install anything older. Coordinator ruling 2026-11-12 UTC: the
 declared floor follows what CI proves, so 0.2.0 requires `illuminate/*` `^13.30` (0.1.0 had `^13.0`).
+
+## cs-fixer makes test macros `static`, which `Macroable` cannot bind
+
+A test closure that does not use `$this` becomes `static fn` after `make fix`, and PHPStan then reports
+`argument.staticClosure` for `Request::macro()`. Make a test macro use `$this` (for example `$this->path()`).
+
+## Private constructors show as uncovered lines
+
+The static-only `Internal` helpers have empty private constructors; PHPUnit counts their braces as uncovered lines
+(line coverage < 100%). Infection does not mutate them, so MSI is unaffected.

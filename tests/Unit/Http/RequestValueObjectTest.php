@@ -102,6 +102,37 @@ final class RequestValueObjectTest extends ApplicationTestCase
         self::assertSame(['user_email' => ['The user email field is not a valid email address.']], $exception->errors());
     }
 
+    public function testTranslatedAttributeNameIsUsed(): void
+    {
+        $this->application()->make(Translator::class)->addLines(['validation.attributes.email' => 'e-mail address'], 'en');
+
+        $exception = $this->validationFailure(Request::create('/', 'GET', ['email' => 'nope']), 'email', EmailAddress::class);
+
+        self::assertSame(['email' => ['The e-mail address field is not a valid email address.']], $exception->errors());
+    }
+
+    public function testCamelCaseKeyReadsAsWords(): void
+    {
+        $exception = $this->validationFailure(Request::create('/', 'GET', ['userEmail' => 'nope']), 'userEmail', EmailAddress::class);
+
+        self::assertSame(['userEmail' => ['The user email field is not a valid email address.']], $exception->errors());
+    }
+
+    public function testAnApplicationMacroOfTheSameNameIsKept(): void
+    {
+        Request::flushMacros();
+        Request::macro('valueObject', fn (): string => "the application's macro on " . $this->path());
+
+        try {
+            RequestMacros::register();
+
+            self::assertSame("the application's macro on /", self::valueObject(Request::create('/'), 'email', EmailAddress::class));
+        } finally {
+            Request::flushMacros();
+            RequestMacros::register();
+        }
+    }
+
     public function testMessageIsTranslated(): void
     {
         $this->application()->make(Translator::class)->addJsonPath(\dirname(__DIR__, 2) . '/Fixtures/lang');

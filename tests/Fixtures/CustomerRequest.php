@@ -9,6 +9,7 @@ use MSSTC4PHP\ValueObject\Geo\GeoCoordinates;
 use MSSTC4PHP\ValueObject\Identity\EmailAddress;
 use MSSTC4PHP\ValueObject\Laravel\Http\ValidatedValueObjects;
 use MSSTC4PHP\ValueObject\Laravel\Rules\ValidValueObject;
+use Override;
 
 final class CustomerRequest extends FormRequest
 {
@@ -22,6 +23,16 @@ final class CustomerRequest extends FormRequest
         return [
             'email' => ['required', new ValidValueObject(EmailAddress::class)],
             'location' => ['nullable', new ValidValueObject(GeoCoordinates::class)],
+            'contact_email' => ['nullable', 'string'],
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    #[Override]
+    public function attributes(): array
+    {
+        return ['contact_email' => 'contact'];
     }
 }

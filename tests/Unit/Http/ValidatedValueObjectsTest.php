@@ -66,6 +66,14 @@ final class ValidatedValueObjectsTest extends ApplicationTestCase
         ;
     }
 
+    public function testValueOnlyAnotherRuleVettedUsesTheFormRequestsAttributeName(): void
+    {
+        $this->postJson('/contacts', ['email' => 'jane@example.com', 'contact_email' => 'nope'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['contact_email' => 'The contact field is not a valid email address.'])
+        ;
+    }
+
     public function testInvalidInputIsRejectedByTheRuleBeforeTheController(): void
     {
         $response = $this->postJson('/customers', ['email' => 'nope']);
@@ -82,5 +90,6 @@ final class ValidatedValueObjectsTest extends ApplicationTestCase
             'location' => $request->valueObject('location', GeoCoordinates::class)?->jsonSerialize(),
             'port' => $request->valueObject('port', Port::class)?->value,
         ]);
+        Route::post('/contacts', static fn (CustomerRequest $request): ?string => $request->valueObject('contact_email', EmailAddress::class)?->value);
     }
 }

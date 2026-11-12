@@ -29,6 +29,6 @@ trait ValidatedValueObjects
      */
     public function valueObject(string $key, string $class): ?object
     {
-        return ValueObjectInput::from($this->container)->convert($key, $this->validated($key), $class);
+        return ValueObjectInput::from($this->container)->convert($key, $this->validated($key), $class, $this->attributes());
     }
 }

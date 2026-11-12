@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
+use Illuminate\Translation\ArrayLoader;
+use Illuminate\Translation\Translator;
 use LogicException;
 use MSSTC4PHP\ValueObject\Geo\GeoCoordinates;
 use MSSTC4PHP\ValueObject\I18n\CountryCode;
@@ -194,6 +196,54 @@ final class RouteValueObjectBinderTest extends TestCase
         $this->bind('/places/{location}', static fn (GeoCoordinates $location): null => null, '/places/x');
     }
 
+    public function testUnbindableTypeIsAProgrammingErrorEvenWhenTheParameterIsAbsent(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('$name');
+
+        $this->bind('/names/{name?}', static fn (?BoundedString $name = null): null => null, '/names');
+    }
+
+    public function testUnbindableTypeIsAProgrammingErrorEvenWhenTheParameterIsNull(): void
+    {
+        $route = $this->route('/places/{location}', static fn (?GeoCoordinates $location): null => null, '/places/x');
+        $route->setParameter('location', null);
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('$location');
+
+        $this->dispatch($route);
+    }
+
+    public function testUnbindableTypeWithAnExplicitBindingIsLeftToIt(): void
+    {
+        $this->router->bind('location', static fn (string $value): GeoCoordinates => GeoCoordinates::fromFloats(0, 0));
+        $route = $this->bind('/places/{location}', static fn (GeoCoordinates $location): null => null, '/places/x');
+
+        self::assertSame('x', $route->parameter('location'));
+    }
+
+    public function testNotFoundMessageUsesTheTranslatedAttributeName(): void
+    {
+        $loader = new ArrayLoader();
+        $loader->addMessages('en', 'validation', ['attributes' => ['email' => 'e-mail address']]);
+
+        try {
+            $this->bind('/users/{email}', static fn (EmailAddress $email): null => null, '/users/nope', translator: new Translator($loader, 'en'));
+            self::fail('No NotFoundHttpException thrown.');
+        } catch (NotFoundHttpException $exception) {
+            self::assertSame('The e-mail address route parameter is not a valid email address.', $exception->getMessage());
+        }
+    }
+
+    public function testNotFoundMessageForACamelCaseRouteParameter(): void
+    {
+        $this->expectException(NotFoundHttpException::class);
+        $this->expectExceptionMessage('The user email route parameter is not a valid email address.');
+
+        $this->bind('/users/{userEmail}', static fn (EmailAddress $userEmail): null => null, '/users/nope');
+    }
+
     public function testCompositeWithACustomCodecIsAProgrammingErrorToo(): void
     {
         $this->expectException(LogicException::class);
@@ -216,16 +266,17 @@ final class RouteValueObjectBinderTest extends TestCase
     /**
      * @param Closure(never, never): null $action
      */
-    private function bind(string $uri, Closure $action, string $path, ValueObjectMapper $mapper = new ValueObjectMapper()): Route
+    private function bind(string $uri, Closure $action, string $path, ValueObjectMapper $mapper = new ValueObjectMapper(), ?Translator $translator = null): Route
     {
         $route = $this->route($uri, $action, $path);
-        $this->dispatch($route, $mapper);
+        $this->dispatch($route, $mapper, $translator);
 
         return $route;
     }
 
-    private function dispatch(Route $route, ValueObjectMapper $mapper = new ValueObjectMapper()): void
+    private function dispatch(Route $route, ValueObjectMapper $mapper = new ValueObjectMapper(), ?Translator $translator = null): void
     {
-        new RouteValueObjectBinder($mapper, $this->router)(new RouteMatched($route, Request::create('/')));
+        $binder = new RouteValueObjectBinder($mapper, $this->router, $translator ?? new Translator(new ArrayLoader(), 'en'));
+        $binder(new RouteMatched($route, Request::create('/')));
     }
 }
