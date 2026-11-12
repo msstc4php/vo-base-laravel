@@ -44,3 +44,39 @@ JSON first (as in the cast); invalid JSON is a rule failure.
 
 Laravel itself does not run a non-implicit rule for `''` (and for missing attributes); the rule still lets
 `null`/`''` through for direct calls.
+
+## Request macro — `Request::valueObject()`
+
+- `Request` uses `Macroable`; `Macroable::macro()` is annotated `@param-closure-this static`, so PHPStan types
+  `$this` in the closure as `Request` without a `@var`. The closure is created in a static method; PHP still binds it
+  (`Closure::bind` in `Macroable::__call`), only an explicitly `static` closure cannot be bound.
+- PHPStan does not apply `@template` / `@param` PHPDoc written on a closure, so `$class` is narrowed with
+  `class_exists()` (also true for enums) inside the macro.
+- Mapper and translator: `Container::getInstance()`; `Request` has no container reference.
+- The message is `Translator::get(DEFAULT_MESSAGE, [attribute, type])`, which looks the text up in JSON translations
+  and replaces both placeholders itself. The validator's custom attribute names (`validation.attributes`) are not
+  applied: there is no validator here. `_` in the key becomes a space, as the validator displays attributes.
+- `ValidationException::withMessages()` gives status 422; it has no way to chain the core exception (no previous).
+
+## Form requests — `ValidatedValueObjects`
+
+- `@phpstan-require-extends FormRequest`, so `$this->container` and `validated()` are known.
+- `validated($key)` returns `null` for a key outside `rules()`. A trait method beats the macro of the same name
+  (`__call` only sees undefined methods).
+- `ValidatedInput` (`safe()`) is not `Macroable`: no `safe()->valueObject()`.
+
+## Route parameters — `RouteValueObjectBinder`
+
+Laravel 13 order inside `Router::runRoute()`: `RouteMatched` is dispatched, then the route middleware run;
+`SubstituteBindings` (web/api groups) does explicit bindings (`Router::substituteBindings()`, binders keyed with
+`-` → `_`) and then implicit ones (`ImplicitRouteBinding`: backed enums first, then `UrlRoutable`).
+
+- The binder runs first, so it must skip parameters with `Router::getBindingCallback($key)`: otherwise a user's
+  `Route::bind('email', fn (string $v) => ...)` would receive our value object instead of the string.
+- Parameter lookup mirrors `ImplicitRouteBinding::getParameterName()`: exact name, then `Str::snake($name)`.
+- Laravel passes route parameters to the action positionally (`resolveMethodDependencies` + `array_values`); a
+  class-typed argument is not built from the container when an instance of it is already among the parameters.
+- An absent optional parameter is not in `parameters()` at all (`RouteParameterBinder` drops empty matches).
+- `Route::signatureParameters()` is untyped (`array`), hence the `instanceof ReflectionParameter` narrowing.
+- `NotFoundHttpException`'s message reaches the client: the JSON 404 is `{"message": "..."}` even with
+  `app.debug=false`, so it carries the parameter name and the type label only.

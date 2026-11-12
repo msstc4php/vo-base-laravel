@@ -4,11 +4,16 @@ Laravel glue for [`msstc4php/vo-base`][core] value objects:
 
 - `Casts\AsValueObject` — an Eloquent cast for every value object the core's `ValueObjectMapper` supports.
 - `Rules\ValidValueObject` — a validation rule that asks the value object whether the input is valid.
+- `$request->valueObject('email', EmailAddress::class)` — request input as a value object, invalid input a 422.
+- `Http\ValidatedValueObjects` — the same for a form request, over its validated data.
+- Route parameters typed with a value object (`/users/{email}` into `EmailAddress $email`), invalid values a 404.
 
-No service provider: nothing needs registering.
+The last three come from `ValueObjectServiceProvider`, which Laravel's package discovery registers.
 
-Requires PHP >= 8.4 and Laravel 13 (`illuminate/database`, `illuminate/validation` `^13.0`). Laravel 12 cannot be
-supported: every 12.x release caps `brick/math` below 0.15, which the core declares as a conflict.
+Requires PHP >= 8.4 and Laravel 13 (`illuminate/database`, `illuminate/validation` `^13.0`). The cast and the rule
+work with those components alone (Capsule included); request input, form requests and route parameters need an
+application on `laravel/framework`. Laravel 12 cannot be supported: every 12.x release caps `brick/math` below 0.15,
+which the core declares as a conflict.
 
 ## Install
 
@@ -21,7 +26,7 @@ Neither this package nor the core is on Packagist yet, so register both GitHub r
         { "type": "vcs", "url": "https://github.com/msstc4php/vo-base-laravel" }
     ],
     "require": {
-        "msstc4php/vo-base-laravel": "^0.1"
+        "msstc4php/vo-base-laravel": "^0.2"
     }
 }
 ```
@@ -117,12 +122,99 @@ $request->validate([
   would choose the limits it is checked against. Validate length with `min`/`max` or use `NonEmptyString`.
 - An unsupported class throws `LogicException` in the constructor.
 
+## Request input
+
+```php
+public function store(Request $request)
+{
+    $email = $request->valueObject('email', EmailAddress::class);      // EmailAddress|null
+    $location = $request->valueObject('location', GeoCoordinates::class);
+}
+```
+
+- Reads `$request->input($key)`: query string, form fields and JSON body alike (dot notation works).
+- Missing, `null` or `''` returns `null`; add `required` validation (or check for `null`) when the field must be there.
+- Invalid input throws `ValidationException` for that key, which Laravel answers with 422 and
+  `{"errors": {"email": ["The email field is not a valid email address."]}}` (a redirect back with errors for a
+  form). The message is the rule's (`ValidValueObject::DEFAULT_MESSAGE`, translated through `lang/<locale>.json`),
+  with `_` in the key read as a space. An array where a string is expected is invalid input, not an error page.
+  Unlike `$request->enum()`, there is no silent fallback to a default: that would hide a client error.
+- Composites take an array (JSON body) or JSON text (a form field or a query string).
+- `BoundedString` and any other trusted-source-only class are always a field error: their payload carries its own
+  constraints.
+- An unsupported class (`stdClass`) is a `LogicException`, whether the field is filled or not.
+
+PHPStan sees the macro only with Larastan; without it, call it from a form request with the trait below.
+
+## Form requests
+
+```php
+use MSSTC4PHP\ValueObject\Laravel\Http\ValidatedValueObjects;
+
+final class StoreCustomerRequest extends FormRequest
+{
+    use ValidatedValueObjects;
+
+    public function rules(): array
+    {
+        return [
+            'email' => ['required', new ValidValueObject(EmailAddress::class)],
+            'location' => ['nullable', new ValidValueObject(GeoCoordinates::class)],
+        ];
+    }
+}
+
+public function store(StoreCustomerRequest $request)
+{
+    $email = $request->valueObject('email', EmailAddress::class);
+}
+```
+
+- Reads `validated($key)`: the rules have already vetted the value, so a request reaching the controller converts
+  cleanly. A key that is not in `rules()` returns `null`, even when the client sent it.
+- Same rules as the request macro otherwise (`null` for empty, composites from an array or JSON text), and it is
+  typed for PHPStan: `valueObject(string $key, class-string<T> $class): ?T`.
+- On a form request using the trait, `valueObject()` is the trait's (validated data), not the request macro.
+- `$request->safe()` returns Laravel's `ValidatedInput`, which is not macroable, so there is no
+  `safe()->valueObject()`.
+
+## Route parameters
+
+```php
+Route::get('/users/{email}', fn (EmailAddress $email) => User::where('email', $email->value)->firstOrFail());
+Route::get('/teams/{team_slug}', [TeamController::class, 'show']); // show(Slug $teamSlug)
+Route::get('/ports/{port?}', fn (?Port $port = null) => $port?->value ?? 80);
+```
+
+- An action argument (closure or controller method) typed with a scalar-backed value object receives it, built from
+  the route parameter of the same name or its snake_case form, as Laravel's implicit binding matches them.
+- An invalid value is a 404, with the message `The email route parameter is not a valid email address.`.
+- Nullable arguments for optional parameters need a default (`?Port $port = null`), as for Laravel's own bindings:
+  without one Laravel tries to build the class from the container.
+- Left alone: backed enums (Laravel binds them), parameters with an explicit `Route::bind()` / `Route::model()`
+  (an `EmailAddress` your binder returns reaches the argument unchanged), values that already are the value object,
+  union and intersection types, and classes the mapper does not support.
+- An argument typed with a composite (`GeoCoordinates`) or a trusted-source-only class (`BoundedString`) is a
+  `LogicException` naming the argument: a URL segment is one string and must not choose its own constraints.
+- The conversion runs on Laravel's `RouteMatched` event, before the route's middleware.
+
+## Custom codecs
+
+The provider binds one `ValueObjectMapper` singleton; the request macro, the form request trait and the route
+binding resolve it from the container. Bind your own in a service provider's `register()` to add codecs:
+
+```php
+$this->app->singleton(ValueObjectMapper::class, fn () => new ValueObjectMapper([new MoneyCodec()]));
+```
+
+The cast and the rule do not use the container (see above for passing them a mapper).
+
 ## Development
 
 ```
 COMPOSER=composer-local.json composer update --ignore-platform-req=php   # against ../vo-base
 make check   # php -l, PHPStan level max, cs-fixer, composer validate/audit, Rector, deptrac
-make test    # PHPUnit (Eloquent on SQLite :memory:, the real validator)
+make test    # PHPUnit (Eloquent on SQLite :memory:, the real validator, Orchestra Testbench for HTTP)
 make infection
 ```
 

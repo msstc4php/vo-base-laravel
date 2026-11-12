@@ -4,9 +4,10 @@ Guidance for Claude Code in this repository. Deep references live under `.claude
 
 ## What this is
 
-`msstc4php/vo-base-laravel`: an Eloquent cast and a validation rule for `msstc4php/vo-base`. PHP >= 8.4,
-Laravel 13 components (`illuminate/*`), no service provider. `Casts` and `Rules` never see each other
-(`deptrac.yaml`). Every conversion goes through the core's `ValueObjectMapper`.
+`msstc4php/vo-base-laravel`: an Eloquent cast, a validation rule, a request macro, a form request trait and route
+parameter binding for `msstc4php/vo-base`. PHP >= 8.4, Laravel 13 components (`illuminate/*`); the HTTP parts need
+`laravel/framework` (dev dependency, suggested) and come from the auto-discovered `ValueObjectServiceProvider`.
+Layers in `deptrac.yaml`. Every conversion goes through the core's `ValueObjectMapper`.
 
 ## Common commands
 

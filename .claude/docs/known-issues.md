@@ -41,3 +41,38 @@ Int payloads must be canonical digits (`"080"` is rejected), float strings must 
 
 The `--prefer-lowest` check runs in a `$TMPDIR` copy with `symlink: false`; after a core change, delete
 `vendor/msstc4php` and the lock there, or the copy tests an old core.
+
+## Nullable route argument without a default is a 500 (Laravel's behaviour)
+
+`fn (?EmailAddress $email)` on `{email?}` with the segment absent: Laravel drops null parameters
+(`parametersWithoutNulls()`), then `transformDependency()` builds the class from the container because the argument
+has no default value — `BindingResolutionException`. Laravel's own optional model bindings have the same rule. The
+README says to write `?EmailAddress $email = null`; the binder cannot fix it (setting `null` is filtered out).
+
+## Test routes need `SubstituteBindings`
+
+Testbench's `defineRoutes()` routes have no middleware group, so enums and `Route::bind()` are not resolved there.
+`RouteBindingTest` wraps its routes in `['middleware' => SubstituteBindings::class]`, like the web/api groups.
+
+## Infection: parallel runs share `sys_get_temp_dir()/infection`
+
+Infection writes its PHPUnit config under `sys_get_temp_dir()`. With other packages' Infection runs at the same time
+(same sandbox `TMPDIR`), the initial run fails with "Could not read XML from file". Run it with a private `TMPDIR`:
+`TMPDIR=$TMPDIR/inf-laravel XDEBUG_MODE=coverage vendor/bin/infection ...`.
+
+## `#[UsesClass]` for everything an app-booting test executes
+
+`beStrictAboutCoverageMetadata` + `failOnRisky`: under coverage (Infection's initial run), a testbench test is risky
+when it runs a package class it does not list. Booting the provider runs `RequestMacros::register()`; dispatching any
+route runs `RouteValueObjectBinder`. `make test` (no coverage) does not show it.
+
+## Rector and PHP-CS-Fixer: run `make fix` twice
+
+Rector imports names after cs-fixer has ordered the imports, so a single `make fix` can leave `ordered_imports` for
+`make check` to report.
+
+## `--prefer-lowest` resolves Laravel 13.30, not 13.0
+
+`orchestra/testbench` 11.0.0 (the lowest 11.x) needs `laravel/framework` >= 13.30, and the monolith replaces every
+`illuminate/*` split, so the lowest-deps job (2026-11-12 UTC) tests the cast and the rule on 13.30.0 too. Runtime
+constraints stay `^13.0`; 0.1.0 had verified 13.0.0 before testbench was a dev dependency.

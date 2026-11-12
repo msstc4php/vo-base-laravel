@@ -43,11 +43,26 @@ Coordinator decision 2026-11-11 UTC, applied in every bridge.
 
 ## Tests
 
-- All tests live in `tests/Unit`, including the SQLite `:memory:` Eloquent round trips: infection runs only the unit
-  suite (`infection.json5`), and they are fast.
-- Eloquent is booted with `Illuminate\Database\Capsule\Manager` per test; no orchestra/testbench.
+- Infection runs only the unit suite (`infection.json5`), so everything that must kill mutants lives in
+  `tests/Unit`, including the SQLite `:memory:` Eloquent round trips and testbench HTTP tests.
+  `tests/Integration/RouteBindingTest` is the full HTTP round trip for route parameters (exception handler, 404
+  body); `tests/Unit/Routing/RouteValueObjectBinderTest` drives the binder directly with a `Route` and a
+  `RouteMatched` event for the branch coverage.
+- Eloquent is booted with `Illuminate\Database\Capsule\Manager` per test. HTTP tests extend
+  `tests/ApplicationTestCase` (Orchestra Testbench, provider registered through `getPackageProviders()`).
+- The request macro is called as `$request->__call('valueObject', [...])` in tests: PHPStan has no Larastan here.
+- Test closures handed to a route only for their signature return `null` and are typed `Closure(never, never): null`
+  (PHPStan accepts closures with fewer parameters there).
 - The validator is `Illuminate\Validation\Factory` over `Translator(new ArrayLoader(), 'en')`. JSON translations in
   tests: `$loader->addMessages($locale, '*', [...], '*')`.
 - `tests/Fixtures/Priority` exists because the core ships no int-backed enum.
-- `tests/Fixtures/Dimensions` + `DimensionsCodec` + `AsDimensions` test the README's custom-codec recipe for both the
-  cast and the rule.
+- `tests/Fixtures/Dimensions` + `DimensionsCodec` + `AsDimensions` test the README's custom-codec recipe for the cast,
+  the rule, the container-bound mapper and the binder's composite refusal.
+- `tests/Fixtures/lang/de.json` is a real JSON translation file (`Translator::addJsonPath()`); `addLines()` cannot
+  hold the message as a key because it splits on `.`.
+
+## Client messages never name a class
+
+`Internal\TypeLabel::of()` is the single label algorithm (short name split before a capital that follows a lowercase
+letter or digit, lowercased); the rule, `ValueObjectInput` and the binder's 404 use it. `LogicException`s (programmer
+errors, never shown with `app.debug=false`) do name classes and the argument.
