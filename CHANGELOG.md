@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 - unreleased
+## 0.3.0 - 2026-11-23
 
 - `Casts\AsValueObject` and `Rules\ValidValueObject` built without a mapper use the container's `ValueObjectMapper`
   binding, like the request macro, the form request trait and the route binding already did; before, they used a
