@@ -7,7 +7,9 @@ namespace MSSTC4PHP\ValueObject\Laravel\Tests\Unit\Casts;
 use LogicException;
 use MSSTC4PHP\ValueObject\Identity\EmailAddress;
 use MSSTC4PHP\ValueObject\Laravel\Casts\AsValueObject;
+use MSSTC4PHP\ValueObject\Laravel\Casts\CasterCache;
 use MSSTC4PHP\ValueObject\Laravel\Internal\CompositeJson;
+use MSSTC4PHP\ValueObject\Laravel\Internal\DefaultMapper;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Customer;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\MisconfiguredCustomer;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\UnmappedValueObject;
@@ -19,6 +21,8 @@ use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
 use stdClass;
 
+#[UsesClass(CasterCache::class)]
+#[UsesClass(DefaultMapper::class)]
 #[CoversClass(AsValueObject::class)]
 #[UsesClass(CompositeJson::class)]
 final class AsValueObjectTest extends TestCase

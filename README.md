@@ -81,7 +81,9 @@ Behaviour:
 - An unsupported class (`AsValueObject::of(stdClass::class)`) throws `LogicException` the first time the model uses
   the cast.
 
-For a value object of your own with a payload codec, give the cast your mapper through a small `Castable`:
+A cast or rule built without a mapper uses the container's `ValueObjectMapper` binding (see "Custom codecs"), so a
+value object of your own with a payload codec works with `AsValueObject::of(Money::class)` once that binding has its
+codec. To give one cast a mapper of its own, use a small `Castable`:
 
 ```php
 final readonly class AsMoney implements Castable
@@ -95,7 +97,7 @@ final readonly class AsMoney implements Castable
 // casts(): 'price' => AsMoney::class
 ```
 
-The rule takes the same mapper: `new ValidValueObject(Money::class, mapper: $mapper)`.
+The rule takes a mapper the same way: `new ValidValueObject(Money::class, mapper: $mapper)`.
 
 ## Validation rule
 
@@ -214,14 +216,19 @@ Route::get('/ports/{port?}', fn (?Port $port = null) => $port?->value ?? 80);
 
 ## Custom codecs
 
-The provider binds one `ValueObjectMapper` singleton; the request macro, the form request trait and the route
-binding resolve it from the container. Bind your own in a service provider's `register()` to add codecs:
+The provider binds one `ValueObjectMapper` singleton; the cast, the rule, the request macro, the form request trait
+and the route binding resolve it from the container. Bind your own in a service provider's `register()` to add codecs,
+or a package's whole set through its `ProvidesCodecs` class:
 
 ```php
 $this->app->singleton(ValueObjectMapper::class, fn () => new ValueObjectMapper([new MoneyCodec()]));
+// vo-documents' composite names: new ValueObjectMapper(\MSSTC4PHP\ValueObject\Documents\Codecs::all())
 ```
 
-The cast and the rule do not use the container (see above for passing them a mapper).
+Bind it as a singleton: casts are kept per class and per mapper, so a rebinding (in tests, say) gets casters of its
+own, and a `bind()` would build a new mapper and new casters on every attribute access. Without a container binding
+(Eloquent through Capsule alone) a plain mapper is used; a binding to anything else than a `ValueObjectMapper` throws
+`LogicException`.
 
 ## Development
 

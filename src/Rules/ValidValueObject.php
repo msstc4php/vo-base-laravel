@@ -11,6 +11,7 @@ use LogicException;
 use MSSTC4PHP\ValueObject\Contract\ValueObject;
 use MSSTC4PHP\ValueObject\Exception\InvalidValueObjectException;
 use MSSTC4PHP\ValueObject\Laravel\Internal\CompositeJson;
+use MSSTC4PHP\ValueObject\Laravel\Internal\DefaultMapper;
 use MSSTC4PHP\ValueObject\Laravel\Internal\Messages;
 use MSSTC4PHP\ValueObject\Laravel\Internal\TypeLabel;
 use MSSTC4PHP\ValueObject\Payload\ValueObjectMapper;
@@ -28,8 +29,11 @@ final readonly class ValidValueObject implements ValidationRule
      */
     public const string DEFAULT_MESSAGE = Messages::INVALID;
 
+    private ValueObjectMapper $mapper;
+
     /**
      * @param class-string<ValueObject|BackedEnum> $class
+     * @param ValueObjectMapper|null $mapper null for the container's ValueObjectMapper binding (a plain mapper without one)
      * @param non-empty-string|null $message replaces DEFAULT_MESSAGE; `:attribute` and `:type` (the class's short name as lowercase words, "email address") are replaced
      *
      * @throws LogicException when $class is not supported, or is trusted-source only (BoundedString)
@@ -37,14 +41,15 @@ final readonly class ValidValueObject implements ValidationRule
     public function __construct(
         private string $class,
         private ?string $message = null,
-        private ValueObjectMapper $mapper = new ValueObjectMapper(),
+        ?ValueObjectMapper $mapper = null,
     ) {
-        if (!$mapper->supports($class)) {
+        $this->mapper = $mapper ?? DefaultMapper::get();
+        if (!$this->mapper->supports($class)) {
             throw new LogicException(\sprintf('%s cannot validate %s: it is neither a scalar-backed value object, a backed enum nor a class with a payload codec.', self::class, $class));
         }
 
         // Its payload carries its own constraints (BoundedString's bounds), so request input would choose them.
-        if (!$mapper->supportsUntrusted($class)) {
+        if (!$this->mapper->supportsUntrusted($class)) {
             throw new LogicException(\sprintf('%s does not validate %s from request input: its payload carries its own constraints. For BoundedString, validate the length with the min/max rules or use NonEmptyString.', self::class, $class));
         }
     }

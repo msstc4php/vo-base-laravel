@@ -7,10 +7,12 @@ namespace MSSTC4PHP\ValueObject\Laravel\Tests\Unit\Http;
 use Illuminate\Support\Facades\Route;
 use MSSTC4PHP\ValueObject\Geo\GeoCoordinates;
 use MSSTC4PHP\ValueObject\Identity\EmailAddress;
+use MSSTC4PHP\ValueObject\Laravel\Casts\CasterCache;
 use MSSTC4PHP\ValueObject\Laravel\Http\RequestMacros;
 use MSSTC4PHP\ValueObject\Laravel\Http\ValidatedValueObjects;
 use MSSTC4PHP\ValueObject\Laravel\Http\ValueObjectInput;
 use MSSTC4PHP\ValueObject\Laravel\Internal\CompositeJson;
+use MSSTC4PHP\ValueObject\Laravel\Internal\DefaultMapper;
 use MSSTC4PHP\ValueObject\Laravel\Internal\FieldName;
 use MSSTC4PHP\ValueObject\Laravel\Internal\TypeLabel;
 use MSSTC4PHP\ValueObject\Laravel\Routing\RouteValueObjectBinder;
@@ -24,6 +26,8 @@ use PHPUnit\Framework\Attributes\CoversTrait;
 use PHPUnit\Framework\Attributes\UsesClass;
 
 #[CoversTrait(ValidatedValueObjects::class)]
+#[UsesClass(CasterCache::class)]
+#[UsesClass(DefaultMapper::class)]
 #[UsesClass(FieldName::class)]
 #[UsesClass(CompositeJson::class)]
 #[UsesClass(RequestMacros::class)]

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 - unreleased
+
+- `Casts\AsValueObject` and `Rules\ValidValueObject` built without a mapper use the container's `ValueObjectMapper`
+  binding, like the request macro, the form request trait and the route binding already did; before, they used a
+  plain mapper of their own, so a codec bound in the container (vo-documents' composite names, an application's own
+  composites) needed a `Castable` per class. Without a binding a plain mapper is used, as before. Casters are cached
+  per class and per mapper, so a rebinding gets casters of its own.
+- `ValidValueObject`'s `$mapper` parameter is now nullable (null: the container's binding); passing one is unchanged.
+- Requires `illuminate/container` (already installed through `illuminate/database`).
+
 ## 0.2.0 - 2026-11-12
 
 - `ValueObjectServiceProvider`, auto-discovered (`extra.laravel.providers`): binds a shared `ValueObjectMapper`

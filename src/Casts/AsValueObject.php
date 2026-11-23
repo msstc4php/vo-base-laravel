@@ -16,6 +16,7 @@ use MSSTC4PHP\ValueObject\Contract\ValueObject;
 use MSSTC4PHP\ValueObject\Exception\InvalidPayloadException;
 use MSSTC4PHP\ValueObject\Exception\InvalidValueObjectException;
 use MSSTC4PHP\ValueObject\Laravel\Internal\CompositeJson;
+use MSSTC4PHP\ValueObject\Laravel\Internal\DefaultMapper;
 use MSSTC4PHP\ValueObject\Payload\ValueObjectMapper;
 use Override;
 
@@ -39,7 +40,7 @@ final readonly class AsValueObject implements Castable, CastsAttributes, Compare
 
     /**
      * @param class-string<TValue> $class
-     * @param ValueObjectMapper|null $mapper null for the default mapper, shared by every cast
+     * @param ValueObjectMapper|null $mapper null for the container's ValueObjectMapper binding (a plain mapper without one)
      *
      * @throws LogicException when the mapper does not support $class
      */
@@ -47,7 +48,7 @@ final readonly class AsValueObject implements Castable, CastsAttributes, Compare
         private string $class,
         ?ValueObjectMapper $mapper = null,
     ) {
-        $this->mapper = $mapper ?? self::defaultMapper();
+        $this->mapper = $mapper ?? DefaultMapper::get();
         if (!$this->mapper->supports($class)) {
             throw new LogicException(\sprintf('%s cannot cast to %s: it is neither a scalar-backed value object, a backed enum nor a class with a payload codec.', self::class, $class));
         }
@@ -66,7 +67,8 @@ final readonly class AsValueObject implements Castable, CastsAttributes, Compare
     }
 
     /**
-     * Eloquent resolves the caster on every attribute access, so casters are kept per class.
+     * Eloquent resolves the caster on every attribute access, so casters are kept per class and per mapper: a
+     * mapper rebound in the container gets casters of its own.
      *
      * @param array<array-key, string> $arguments
      *
@@ -77,15 +79,12 @@ final readonly class AsValueObject implements Castable, CastsAttributes, Compare
     #[Override]
     public static function castUsing(array $arguments): self
     {
-        /** @var array<class-string<ValueObject|BackedEnum>, self<ValueObject|BackedEnum>> $casters */
-        static $casters = [];
-
         $class = $arguments[0] ?? '';
         if (\count($arguments) !== 1 || (!is_a($class, ValueObject::class, true) && !is_a($class, BackedEnum::class, true))) {
             throw new LogicException(\sprintf('%s expects exactly one value object class, as in %s::of(EmailAddress::class); got "%s".', self::class, self::class, implode(',', $arguments)));
         }
 
-        return $casters[$class] ??= new self($class, self::defaultMapper());
+        return CasterCache::of($class, DefaultMapper::get());
     }
 
     /**
@@ -179,16 +178,5 @@ final readonly class AsValueObject implements Castable, CastsAttributes, Compare
         return $trusted
             ? $this->mapper->fromPayload($this->class, $payload)
             : $this->mapper->fromUntrustedPayload($this->class, $payload);
-    }
-
-    /**
-     * Shared by every cast built without an explicit mapper: it is stateless.
-     */
-    private static function defaultMapper(): ValueObjectMapper
-    {
-        /** @var ValueObjectMapper|null $mapper */
-        static $mapper = null;
-
-        return $mapper ??= new ValueObjectMapper();
     }
 }

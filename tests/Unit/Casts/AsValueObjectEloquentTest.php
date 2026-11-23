@@ -16,7 +16,9 @@ use MSSTC4PHP\ValueObject\Geo\GeoCoordinates;
 use MSSTC4PHP\ValueObject\I18n\CountryCode;
 use MSSTC4PHP\ValueObject\Identity\EmailAddress;
 use MSSTC4PHP\ValueObject\Laravel\Casts\AsValueObject;
+use MSSTC4PHP\ValueObject\Laravel\Casts\CasterCache;
 use MSSTC4PHP\ValueObject\Laravel\Internal\CompositeJson;
+use MSSTC4PHP\ValueObject\Laravel\Internal\DefaultMapper;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Customer;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Dimensions;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Priority;
@@ -31,6 +33,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 
+#[UsesClass(CasterCache::class)]
+#[UsesClass(DefaultMapper::class)]
 #[CoversClass(AsValueObject::class)]
 #[UsesClass(CompositeJson::class)]
 final class AsValueObjectEloquentTest extends TestCase
