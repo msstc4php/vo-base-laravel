@@ -86,3 +86,8 @@ A test closure that does not use `$this` becomes `static fn` after `make fix`, a
 
 The static-only `Internal` helpers have empty private constructors; PHPUnit counts their braces as uncovered lines
 (line coverage < 100%). Infection does not mutate them, so MSI is unaffected.
+
+## Roave BC check is red on 0.3.0
+
+The BC job fails because Roave cannot compile v0.2.0's `new ValueObjectMapper()` parameter initializer; the API did
+not break. Expected to clear once the baseline tag is 0.3.0.

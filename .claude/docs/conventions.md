@@ -15,11 +15,11 @@ value-object kinds itself; `JsonString` columns stay strings because `JsonString
 
 ## Caching: casters per class, one default mapper
 
-Eloquent re-resolves the caster on every attribute access, so `castUsing()` keeps one caster per class in a
-function-static array and every cast built without an explicit mapper shares one default mapper (function-static in
-`private static function defaultMapper()`). Rector turns a static method that is only called from instance context
-into an instance method, so `castUsing()` passes `self::defaultMapper()` explicitly, which keeps it static. Both are
-stateless.
+Eloquent re-resolves the caster on every attribute access. Since 0.3.0 the mapper comes from
+`Internal\DefaultMapper::resolve()`: the container's `ValueObjectMapper` binding when bound (a non-mapper binding is a
+`LogicException`), else one static fallback `new ValueObjectMapper()`. Casters are cached per mapper and class in
+`Casts\CasterCache` (a `WeakMap` keyed by mapper), not in `Internal`, because deptrac forbids Internal -> Casts.
+Rebinding the mapper in a test therefore gets fresh casters without a reset hook.
 
 ## `castUsing()` checks `is_a(..., ValueObject|BackedEnum)` before the constructor
 
