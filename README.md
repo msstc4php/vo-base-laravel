@@ -262,7 +262,7 @@ own, and a `bind()` would build a new mapper and new casters on every attribute 
   bridges write, so a row written through one reads through another. Request input and route segments are read in
   the same forms.
 - **Exceptions:**
-  - the cast's `get()` and `set()`: vo-base's `InvalidValueObjectException` or its subclass `InvalidPayloadException`,
+  - the cast's `get()`, `set()` and `serialize()`: vo-base's `InvalidValueObjectException` or its subclass `InvalidPayloadException`,
     unchanged, for an invalid stored or assigned value (including a raw payload of a trusted-source-only class and a
     query expression); `InvalidPayloadException` with the `JsonException` as previous for composite JSON text that
     does not parse or a composite that cannot be encoded;

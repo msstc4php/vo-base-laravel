@@ -97,7 +97,8 @@ The static-only `Internal` helpers have empty private constructors; PHPUnit coun
 
 On 0.3.0 the job was red against v0.2.0 (it treated v0.2.0's `= new ValueObjectMapper()` parameter initializer as a
 change; the API did not break). v0.3.0 has `?ValueObjectMapper $mapper = null` and no `new` initializer anywhere in
-`src/`, so the 1.0.0 run compares cleanly; keep it that way (a changed `new` default counts as a break). The 1.0.0
-changes it could see are `@internal` additions (`RequestMacros`, `RouteValueObjectBinder`) and a private constructor
-on `RequestMacros`, which Roave skips for `@internal` classes. Not run locally (the VCS repository needs GitHub
+`src/`; keep it that way (a changed `new` default counts as a break). The first 1.0.0 run against v0.3.0 WILL be red
+(exit 3): Roave 8.27's `ExcludeInternalClass` looks only at the from-class, so marking `RequestMacros` and
+`RouteValueObjectBinder` `@internal` is reported as two "[BC] CHANGED ... was marked @internal" entries (both are in
+the CHANGELOG Upgrading notes). It clears once v1.0.0 is the base. Not run locally (the VCS repository needs GitHub
 authentication).

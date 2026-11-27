@@ -75,6 +75,8 @@ final class ValueObjectInputTest extends ApplicationTestCase
             self::fail('No ValidationException thrown.');
         } catch (ValidationException $exception) {
             self::assertSame(['user_email' => ['The user email field is not a valid email address.']], $exception->errors());
+            // README "Backward compatibility": the 422 carries no previous exception.
+            self::assertNull($exception->getPrevious());
         }
     }
 }
