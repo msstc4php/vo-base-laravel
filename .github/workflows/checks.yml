@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           repository: msstc4symfony/bundle-standard
-          ref: v4.1.0
+          ref: v4.1.1
           path: .standard
       - name: Compare with the php84 templates
         run: |
