@@ -90,6 +90,7 @@ Laravel 13 order inside `Router::runRoute()`: `RouteMatched` is dispatched, then
 - `Route::signatureParameters()` is untyped (`array`), hence the `instanceof ReflectionParameter` narrowing.
 - `NotFoundHttpException`'s message reaches the client: the JSON 404 is `{"message": "..."}` even with
   `app.debug=false`, so it carries the parameter name (`FieldName`, `_` → space, as the 422 path) and the type label
-  only.
+  only. Its previous is vo-base's exception, unchanged, whose message quotes an excerpt of the segment; only
+  debug error pages show it (README says so, ruling O3: vo-base exceptions pass through).
 - Because the listener runs before all route middleware, an invalid segment is a 404 before `auth` can answer
   401/403, and middleware reading `$request->route('email')` gets the value object.

@@ -4,8 +4,8 @@
 
 Every `illuminate/database` / `illuminate/validation` 12.x release (checked up to 12.72.0, 2026-11-11 UTC) requires
 `brick/math` `^0.11 … ^0.14`, and `msstc4php/vo-base` declares `conflict: brick/math <0.15`. No Laravel 12 install can
-satisfy both, so the package requires `^13.0`; `--prefer-lowest` resolves to 13.0.0, which passes the suite. Revisit
-if a 12.x release widens `brick/math` or the core relaxes its conflict.
+satisfy both, so the package requires Laravel 13 (now `^13.40`, see below). Revisit if a 12.x release widens
+`brick/math` or the core relaxes its conflict. Under the 1.x promise adding 12 back would be a minor (support added).
 
 ## `Model::$casts` override fails PHPStan
 
@@ -71,11 +71,17 @@ route runs `RouteValueObjectBinder`. `make test` (no coverage) does not show it.
 Rector imports names after cs-fixer has ordered the imports, so a single `make fix` can leave `ordered_imports` for
 `make check` to report.
 
-## Floor is Laravel 13.30 because of testbench
+## Floor is Laravel 13.40 because of a security advisory
 
 `orchestra/testbench` 11.0.0 (the lowest 11.x) needs `laravel/framework` >= 13.30, and the monolith replaces every
 `illuminate/*` split, so `--prefer-lowest` cannot install anything older. Coordinator ruling 2026-11-12 UTC: the
-declared floor follows what CI proves, so 0.2.0 requires `illuminate/*` `^13.30` (0.1.0 had `^13.0`).
+declared floor follows what CI proves, so 0.2.0 required `illuminate/*` `^13.30` (0.1.0 had `^13.0`).
+
+By 2026-11-27 UTC `roave/security-advisories` conflicts `laravel/framework` `>=13,<13.40` (the splits themselves have
+no advisory in that range), so the lowest job installs 13.40.0. 1.0.0 therefore requires `^13.40` and conflicts
+`laravel/framework`, `illuminate/http` and `illuminate/routing` `<13.40` (the last two are optional, so only a
+`conflict` enforces their floor). After 1.0 raising any of these floors needs a major (O10): if the advisory floor
+moves again, CI's lowest job goes up with it while the declared floor stays; note it, do not raise it in a minor.
 
 ## cs-fixer makes test macros `static`, which `Macroable` cannot bind
 
@@ -87,7 +93,11 @@ A test closure that does not use `$this` becomes `static fn` after `make fix`, a
 The static-only `Internal` helpers have empty private constructors; PHPUnit counts their braces as uncovered lines
 (line coverage < 100%). Infection does not mutate them, so MSI is unaffected.
 
-## Roave BC check is red on 0.3.0
+## Roave BC check against v0.3.0
 
-The BC job fails because Roave cannot compile v0.2.0's `new ValueObjectMapper()` parameter initializer; the API did
-not break. Expected to clear once the baseline tag is 0.3.0.
+On 0.3.0 the job was red against v0.2.0 (it treated v0.2.0's `= new ValueObjectMapper()` parameter initializer as a
+change; the API did not break). v0.3.0 has `?ValueObjectMapper $mapper = null` and no `new` initializer anywhere in
+`src/`, so the 1.0.0 run compares cleanly; keep it that way (a changed `new` default counts as a break). The 1.0.0
+changes it could see are `@internal` additions (`RequestMacros`, `RouteValueObjectBinder`) and a private constructor
+on `RequestMacros`, which Roave skips for `@internal` classes. Not run locally (the VCS repository needs GitHub
+authentication).

@@ -12,9 +12,15 @@ use LogicException;
  * `$request->valueObject('email', EmailAddress::class)`: the input as a value object, null when not filled,
  * a ValidationException (422, the field's error) when invalid. Unlike `$request->enum()` there is no silent
  * fallback, which would hide a client error.
+ *
+ * @internal registered by ValueObjectServiceProvider; use the provider
  */
 final class RequestMacros
 {
+    private function __construct()
+    {
+    }
+
     /**
      * An application macro of the same name wins: it is left in place.
      */

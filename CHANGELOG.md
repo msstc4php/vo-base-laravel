@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.0.0] - unreleased
+
+First stable release: from here on a breaking change needs 2.0. What 1.x covers is listed in the README,
+"Backward compatibility": the classes and the trait, the constructors of the cast and the rule with their parameter
+names, the cast definition, the `valueObject` macro, the container id, the route binding rules, the translation key
+and its `:attribute` / `:type` placeholders, the stored formats, and which exception each path throws. Not covered:
+message wording otherwise and anything `@internal`.
+
+### Changed
+
+- Requires `msstc4php/vo-base` ^1.4 (was ^1.1): an abstract class implementing `ResolvesConcreteClass` is a valid
+  cast, rule, request input and route parameter type, and a mapper built from a `ProvidesCodecs` set
+  (`new ValueObjectMapper(Codecs::all())`) bound in the container reaches the cast, the rule, the request input and
+  the route binding; both are tested.
+- Requires Laravel 13.40+: `illuminate/*` `^13.40` (was `^13.30`). `laravel/framework` below 13.40 has a security
+  advisory, so the lowest version CI can install is 13.40. `laravel/framework`, `illuminate/http` and
+  `illuminate/routing` below 13.40 now conflict.
+- `Http\RequestMacros` and `Routing\RouteValueObjectBinder` are `@internal`: the provider registers them.
+
+### Upgrading from 0.x
+
+- No change to the cast, the rule, the trait, the macro, the route binding or the messages.
+- Update `msstc4php/vo-base` to ^1.4 and Laravel to 13.40 or later if they are pinned lower.
+- Code that called `RequestMacros::register()` or built a `RouteValueObjectBinder` itself should rely on
+  `ValueObjectServiceProvider` instead; neither is covered by 1.x (`RequestMacros` also has a private constructor
+  now).
+
 ## 0.3.0 - 2026-11-23
 
 - `Casts\AsValueObject` and `Rules\ValidValueObject` built without a mapper use the container's `ValueObjectMapper`

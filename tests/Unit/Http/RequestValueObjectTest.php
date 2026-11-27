@@ -16,8 +16,11 @@ use MSSTC4PHP\ValueObject\Laravel\Internal\CompositeJson;
 use MSSTC4PHP\ValueObject\Laravel\Internal\FieldName;
 use MSSTC4PHP\ValueObject\Laravel\Internal\TypeLabel;
 use MSSTC4PHP\ValueObject\Laravel\Tests\ApplicationTestCase;
+use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Code;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Dimensions;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\DimensionsCodec;
+use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\LongCode;
+use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\ShortCode;
 use MSSTC4PHP\ValueObject\Laravel\ValueObjectServiceProvider;
 use MSSTC4PHP\ValueObject\Network\Port;
 use MSSTC4PHP\ValueObject\Payload\ValueObjectMapper;
@@ -86,6 +89,32 @@ final class RequestValueObjectTest extends ApplicationTestCase
 
         self::assertSame(['email' => ['The email field is not a valid email address.']], $exception->errors());
         self::assertSame(422, $exception->status);
+    }
+
+    public function testTheMessageCarriesNoPartOfTheValueWhileTheCauseQuotesIt(): void
+    {
+        $value = 'SeCrEt-7f3a';
+        $exception = $this->validationFailure(Request::create('/', 'GET', ['email' => $value]), 'email', EmailAddress::class);
+
+        self::assertSame(['email' => ['The email field is not a valid email address.']], $exception->errors());
+        self::assertStringNotContainsString($value, $exception->getMessage());
+
+        $this->expectExceptionMessage($value);
+
+        $this->application()->make(ValueObjectMapper::class)->fromUntrustedPayload(EmailAddress::class, $value);
+    }
+
+    public function testAnAbstractTypeBecomesTheSubclassTheInputFits(): void
+    {
+        self::assertEquals(ShortCode::from('abc'), $this->valueObject(Request::create('/', 'GET', ['code' => 'abc']), 'code', Code::class));
+        self::assertEquals(LongCode::from('abcdef'), $this->valueObject(Request::create('/', 'GET', ['code' => 'abcdef']), 'code', Code::class));
+    }
+
+    public function testAnAbstractTypeNoSubclassFitsIsAFieldError(): void
+    {
+        $exception = $this->validationFailure(Request::create('/', 'GET', ['code' => 'abcdefgh']), 'code', Code::class);
+
+        self::assertSame(['code' => ['The code field is not a valid code.']], $exception->errors());
     }
 
     public function testArrayForAScalarIsAFieldError(): void

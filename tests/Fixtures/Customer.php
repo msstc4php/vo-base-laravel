@@ -47,6 +47,7 @@ final class Customer extends Model
             'label' => AsValueObject::of(BoundedString::class),
             'period' => AsValueObject::of(DateRange::class),
             'size' => AsDimensions::class,
+            'code' => AsValueObject::of(Code::class),
         ];
     }
 }

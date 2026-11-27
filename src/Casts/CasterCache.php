@@ -20,6 +20,10 @@ final class CasterCache
     /** @var WeakMap<ValueObjectMapper, array<class-string<ValueObject|BackedEnum>, AsValueObject<ValueObject|BackedEnum>>>|null */
     private static ?WeakMap $byMapper = null;
 
+    private function __construct()
+    {
+    }
+
     /**
      * @param class-string<ValueObject|BackedEnum> $class
      *

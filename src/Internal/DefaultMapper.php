@@ -19,6 +19,10 @@ final class DefaultMapper
 {
     private static ?ValueObjectMapper $fallback = null;
 
+    private function __construct()
+    {
+    }
+
     /**
      * @throws LogicException when the binding resolves to something else than a ValueObjectMapper
      */

@@ -10,9 +10,10 @@ Laravel glue for [`msstc4php/vo-base`][core] value objects:
 
 The last three come from `ValueObjectServiceProvider`, which Laravel's package discovery registers.
 
-Requires PHP >= 8.4 and Laravel 13.30+ (`illuminate/database`, `illuminate/validation` `^13.30`). The cast and the rule
-work with those components alone (Capsule included); request input, form requests and route parameters need an
-application on `laravel/framework`. Laravel 12 cannot be supported: every 12.x release caps `brick/math` below 0.15,
+Requires PHP >= 8.4, `msstc4php/vo-base` ^1.4 and Laravel 13.40+ (`illuminate/database`, `illuminate/validation`
+`^13.40`; `laravel/framework` below 13.40 has a security advisory). The cast and the rule work with those components
+alone (Capsule included); request input, form requests and route parameters need an application on
+`laravel/framework`. Laravel 12 cannot be supported: every 12.x release caps `brick/math` below 0.15,
 which the core declares as a conflict.
 
 ## Install
@@ -26,7 +27,7 @@ Neither this package nor the core is on Packagist yet, so register both GitHub r
         { "type": "vcs", "url": "https://github.com/msstc4php/vo-base-laravel" }
     ],
     "require": {
-        "msstc4php/vo-base-laravel": "^0.3"
+        "msstc4php/vo-base-laravel": "^1.0"
     }
 }
 ```
@@ -141,7 +142,8 @@ public function store(Request $request)
   form). The message is the rule's (`ValidValueObject::DEFAULT_MESSAGE`, translated through `lang/<locale>.json`),
   with the field named as Laravel's validator names it: a `validation.attributes.<key>` translation if there is one,
   else the key in words (`user_email` and `userEmail` both read "user email"). If the translator returns no string
-  for the message, the untranslated message is used with both placeholders filled in. An array where a string is expected is invalid input, not an error page.
+  for the message, the untranslated message is used with both placeholders filled in.
+- An array where a string is expected is invalid input, not an error page.
   Unlike `$request->enum()`, there is no silent fallback to a default: that would hide a client error.
 - Composites take an array (JSON body) or JSON text (a form field or a query string).
 - `BoundedString` and any other trusted-source-only class are always a field error: their payload carries its own
@@ -199,6 +201,8 @@ Route::get('/ports/{port?}', fn (?Port $port = null) => $port?->value ?? 80);
 - An invalid value is a 404, with the message `The email route parameter is not a valid email address.`. The
   parameter is named as in request input errors: a `validation.attributes.<name>` translation, else the name in
   words (`{user_email}` → "The user email route parameter …").
+- The 404's previous exception is vo-base's, whose message may quote an excerpt of the segment. Laravel shows it only
+  on debug error pages (`APP_DEBUG=true`); the response with debugging off carries the message above.
 - Nullable arguments for optional parameters need a default (`?Port $port = null`). This is the same rule as
   Laravel's optional model binding: without a default, Laravel drops the missing parameter and tries to build the
   class from the container, which is a 500 that the package cannot prevent.
@@ -229,6 +233,60 @@ Bind it as a singleton: casts are kept per class and per mapper, so a rebinding 
 own, and a `bind()` would build a new mapper and new casters on every attribute access. Without a container binding
 (Eloquent through Capsule alone) a plain mapper is used; a binding to anything else than a `ValueObjectMapper` throws
 `LogicException`.
+
+## Backward compatibility
+
+1.x follows semantic versioning; a breaking change needs 2.0. Covered by 1.x:
+
+- **Code API:** these classes and the trait, the constructors with these parameter names (named arguments), the
+  methods of the Laravel interfaces and base classes they implement or extend:
+  - `Casts\AsValueObject` `(string $class, ?ValueObjectMapper $mapper = null)` (template `TValue`), its
+    `of(string $class)` and Eloquent's `castUsing()`, `get()`, `set()`, `serialize()` and `compare()`;
+  - `Rules\ValidValueObject` `(string $class, ?string $message = null, ?ValueObjectMapper $mapper = null)`, its
+    `DEFAULT_MESSAGE` constant and `validate()`;
+  - `Http\ValidatedValueObjects`, the form request trait, with `valueObject(string $key, string $class)`;
+  - `ValueObjectServiceProvider`, auto-discovered (`extra.laravel.providers`); its `register()` and `boot()` are
+    Laravel's to call. It binds `ValueObjectMapper` as a singleton only if the application has not bound one (a later
+    binding replaces it) and, when `illuminate/http` / `illuminate/routing` are installed, registers the request
+    macro (unless the application has a `valueObject` macro) and the route binding.
+- **Names users write:** the cast definition `AsValueObject::class.':'.X::class` (what `of()` returns); the `Request`
+  macro `valueObject($key, $class)`; the container id `ValueObjectMapper::class`, which a cast or rule built without a
+  mapper, the macro, the trait and the route binding use; the route binding by argument name or its snake_case form,
+  for scalar-backed value objects, leaving enums, explicit `Route::bind()` / `Route::model()` bindings, instances,
+  union types and unsupported classes alone, and running on `RouteMatched`, before the route middleware.
+- **Messages:** the translation key `The :attribute field is not a valid :type.` (`ValidValueObject::DEFAULT_MESSAGE`,
+  also the 422 message of the macro and the trait) and its `:attribute` and `:type` placeholders; field names read
+  from a form request's `attributes()`, then `validation.attributes.<key>`. Changing that default text needs 2.0, or
+  a new key with the old one kept.
+- **Data:** the stored formats above. They are vo-base's payload layer, the same as the Doctrine types and the other
+  bridges write, so a row written through one reads through another. Request input and route segments are read in
+  the same forms.
+- **Exceptions:**
+  - the cast's `get()` and `set()`: vo-base's `InvalidValueObjectException` or its subclass `InvalidPayloadException`,
+    unchanged, for an invalid stored or assigned value (including a raw payload of a trusted-source-only class and a
+    query expression); `InvalidPayloadException` with the `JsonException` as previous for composite JSON text that
+    does not parse or a composite that cannot be encoded;
+  - `Illuminate\Validation\ValidationException` (422) for invalid input to the macro and the trait, and for a
+    trusted-source-only class there, with no previous exception;
+  - `Symfony\Component\HttpKernel\Exception\NotFoundHttpException` (404) for an invalid route segment, with vo-base's
+    own exception as previous, passed through unchanged;
+  - `LogicException` for configuration errors: a cast definition without exactly one value-object class, a class
+    the mapper does not support (cast, rule, macro, trait), a trusted-source-only class in the rule, a macro class
+    name that is no class, a route argument typed with a composite or a trusted-source-only class, and, for a cast or
+    rule built without a mapper, a container binding of `ValueObjectMapper` to anything else.
+- **Enums:** the cast, the rule and request input handle backed enums; route parameters typed with a backed enum stay
+  with Laravel's implicit binding.
+- **Versions:** a minor may add support for a new Laravel or PHP major; dropping a supported Laravel or PHP version
+  needs a major, and so does raising the floor of any third-party dependency (Laravel, PHP). A minor may raise the
+  floor of a `msstc4php/*` package within its major (those follow the same promise). The floor of the optional
+  `laravel/framework`, `illuminate/http` and `illuminate/routing` (13.40) is enforced by `conflict` entries.
+
+A minor never refuses a value an earlier 1.x accepted: the cast, the rule, request input and the route binding add no
+validation of their own, the value objects (vo-base and the domain packages) decide, and they follow the same rule.
+
+Not covered: exception message wording (the package's messages name a type label, a field or a route parameter, never
+the value), except the translation key above; anything marked `@internal` (`Internal\`, `Casts\CasterCache`,
+`Http\ValueObjectInput`, and `Http\RequestMacros` and `Routing\RouteValueObjectBinder`, which the provider registers).
 
 ## Development
 

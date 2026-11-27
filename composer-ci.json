@@ -22,19 +22,19 @@
     ],
     "require": {
         "php": ">=8.4",
-        "illuminate/container": "^13.30",
-        "illuminate/contracts": "^13.30",
-        "illuminate/database": "^13.30",
-        "illuminate/support": "^13.30",
-        "illuminate/validation": "^13.30",
-        "msstc4php/vo-base": "^1.1"
+        "illuminate/container": "^13.40",
+        "illuminate/contracts": "^13.40",
+        "illuminate/database": "^13.40",
+        "illuminate/support": "^13.40",
+        "illuminate/validation": "^13.40",
+        "msstc4php/vo-base": "^1.4"
     },
     "require-dev": {
         "deptrac/deptrac": "^4.6",
         "friendsofphp/php-cs-fixer": "^3.76",
-        "illuminate/translation": "^13.30",
+        "illuminate/translation": "^13.40",
         "infection/infection": "^0.32",
-        "laravel/framework": "^13.30",
+        "laravel/framework": "^13.40",
         "orchestra/testbench": "^11.0",
         "phpstan/extension-installer": "^1.4",
         "phpstan/phpstan": "^2.1",
@@ -44,6 +44,11 @@
         "rector/rector": "^2.1",
         "roave/backward-compatibility-check": "^8.20",
         "roave/security-advisories": "dev-latest"
+    },
+    "conflict": {
+        "illuminate/http": "<13.40",
+        "illuminate/routing": "<13.40",
+        "laravel/framework": "<13.40"
     },
     "suggest": {
         "laravel/framework": "For $request->valueObject(), the ValidatedValueObjects form request trait and value objects as route parameters."

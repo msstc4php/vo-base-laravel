@@ -2,8 +2,8 @@
 
 ## Raw payload assignment is accepted on purpose
 
-`$model->email = 'a@b.c'` works: every non-instance value goes through `ValueObjectMapper::fromPayload()`, so it is
-validated (and canonicalised) on assignment. A value object of another class is just "a payload of the wrong type"
+`$model->email = 'a@b.c'` works: every non-instance value goes through `ValueObjectMapper::fromUntrustedPayload()`, so it
+is validated (and canonicalised) on assignment. A value object of another class is just "a payload of the wrong type"
 and fails with `InvalidPayloadException`. Rejecting raw values would break `fill()`/`create()` from request data.
 
 ## JSON decoding is decided by `isComposite()`
@@ -16,7 +16,7 @@ value-object kinds itself; `JsonString` columns stay strings because `JsonString
 ## Caching: casters per class, one default mapper
 
 Eloquent re-resolves the caster on every attribute access. Since 0.3.0 the mapper comes from
-`Internal\DefaultMapper::resolve()`: the container's `ValueObjectMapper` binding when bound (a non-mapper binding is a
+`Internal\DefaultMapper::get()`: the container's `ValueObjectMapper` binding when bound (a non-mapper binding is a
 `LogicException`), else one static fallback `new ValueObjectMapper()`. Casters are cached per mapper and class in
 `Casts\CasterCache` (a `WeakMap` keyed by mapper), not in `Internal`, because deptrac forbids Internal -> Casts.
 Rebinding the mapper in a test therefore gets fresh casters without a reset hook.
@@ -59,6 +59,14 @@ Coordinator decision 2026-11-11 UTC, applied in every bridge.
 - `tests/Fixtures/Priority` exists because the core ships no int-backed enum.
 - `tests/Fixtures/Dimensions` + `DimensionsCodec` + `AsDimensions` test the README's custom-codec recipe for the cast,
   the rule, the container-bound mapper and the binder's composite refusal.
+- `tests/Fixtures/Code` (abstract, `ResolvesConcreteClass`) with `ShortCode` (1-3 letters) / `LongCode` (4-6) is the
+  local stand-in for vo-documents' MRZ: cast, rule, macro and binder tests use it, and it pins the vo-base ^1.4 floor.
+  `tests/Fixtures/AppCodecs` (`ProvidesCodecs`, returns `DimensionsCodec`) backs
+  `ValueObjectServiceProviderTest::testAMapperBuiltFromACodecSetReachesEveryPart`.
+- Redaction tests (`testTheMessageCarriesNoPartOfTheValueWhileTheCauseQuotesIt`, rule / macro / binder) use the marker
+  `SeCrEt-7f3a` as an e-mail: the bridge's message must not contain it, and the cause must (the 404's
+  `getPrevious()`; for the 422 paths, which have no previous, the mapper's own exception for the same value). Without
+  the second half the test would also pass if vo-base stopped quoting.
 - `tests/Fixtures/lang/de.json` is a real JSON translation file (`Translator::addJsonPath()`); `addLines()` cannot
   hold the message as a key because it splits on `.`.
 

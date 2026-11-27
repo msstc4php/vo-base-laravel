@@ -6,8 +6,8 @@ Thin adapters over the core's `MSSTC4PHP\ValueObject\Payload\ValueObjectMapper`:
 |---|---|---|
 | `Casts` | `AsValueObject` | Eloquent attribute casting (`illuminate/database`) |
 | `Rules` | `ValidValueObject` | Request validation (`illuminate/validation`) |
-| `Http` | `RequestMacros`, `ValidatedValueObjects` (trait), `ValueObjectInput` (`@internal`) | `Request::macro('valueObject')`, `FormRequest` |
-| `Routing` | `RouteValueObjectBinder` | `RouteMatched` listener (`illuminate/routing`) |
+| `Http` | `RequestMacros` (`@internal`), `ValidatedValueObjects` (trait), `ValueObjectInput` (`@internal`) | `Request::macro('valueObject')`, `FormRequest` |
+| `Routing` | `RouteValueObjectBinder` (`@internal`) | `RouteMatched` listener (`illuminate/routing`) |
 | `Internal` | `TypeLabel`, `FieldName`, `CompositeJson`, `Messages` (all `@internal`, static-only, private constructors) | client-facing labels ("email address", "user email"), the one message text, composite JSON-text decoding for every input path |
 | `Provider` | `ValueObjectServiceProvider` | auto-discovered (`extra.laravel.providers`) |
 
@@ -27,3 +27,16 @@ Thin adapters over the core's `MSSTC4PHP\ValueObject\Payload\ValueObjectMapper`:
 - The provider registers the macro only if `Illuminate\Http\Request` exists and the listener only if
   `Illuminate\Routing\Router` exists (`callAfterResolving`, so the router is not resolved early). Runtime `require`
   stays the `illuminate/*` splits; `laravel/framework` is dev-only + `suggest` (`FormRequest` lives only there).
+
+## Public surface (1.x)
+
+Frozen by the README "Backward compatibility" section since 1.0.0: `AsValueObject` (ctor, `of()`, the cast
+methods), `ValidValueObject` (ctor, `DEFAULT_MESSAGE`, `validate()`), the `ValidatedValueObjects` trait,
+`ValueObjectServiceProvider`, the macro name, the container id, the route binding rules, the translation key with
+`:attribute` / `:type`, the stored formats and the exception per path. `RequestMacros` and `RouteValueObjectBinder`
+became `@internal` in 1.0 (the provider wires them). The static-only classes (`CasterCache`, `RequestMacros`,
+`DefaultMapper` and the `Internal` helpers) all have private constructors. No public signature has a `new`
+initializer; keep it so (Roave reports a changed one as a break).
+
+`ResolvesConcreteClass` types and `ProvidesCodecs` sets need no code here: the mapper (vo-base >= 1.4) handles both,
+and `instanceof $class` holds for the subclass instance, so the cast's and the binder's instance checks work.

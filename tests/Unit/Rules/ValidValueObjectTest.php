@@ -19,11 +19,14 @@ use MSSTC4PHP\ValueObject\Laravel\Internal\DefaultMapper;
 use MSSTC4PHP\ValueObject\Laravel\Internal\TypeLabel;
 use MSSTC4PHP\ValueObject\Laravel\Rules\ValidValueObject;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\AsDimensions;
+use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Code;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Dimensions;
+use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\LongCode;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Priority;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\UnmappedValueObject;
 use MSSTC4PHP\ValueObject\Network\Ipv4Address;
 use MSSTC4PHP\ValueObject\Network\Port;
+use MSSTC4PHP\ValueObject\Payload\ValueObjectMapper;
 use MSSTC4PHP\ValueObject\Primitive\BoundedString;
 use MSSTC4PHP\ValueObject\Primitive\Percentage;
 use Override;
@@ -64,6 +67,9 @@ final class ValidValueObjectTest extends TestCase
         yield 'composite from JSON' => [GeoCoordinates::class, ['lat' => 52.52, 'lng' => 13.405]];
         yield 'composite as JSON text' => [GeoCoordinates::class, '{"lat":52.52,"lng":13.405}'];
         yield 'an instance' => [EmailAddress::class, EmailAddress::from('jane@example.com')];
+        yield 'abstract type, the short subclass' => [Code::class, 'abc'];
+        yield 'abstract type, the long subclass' => [Code::class, 'abcdef'];
+        yield 'abstract type, an instance of a subclass' => [Code::class, LongCode::from('abcd')];
         yield 'null' => [EmailAddress::class, null];
         yield 'empty string' => [Port::class, ''];
     }
@@ -97,6 +103,7 @@ final class ValidValueObjectTest extends TestCase
         yield 'digits after a lowercase letter' => [Ipv4Address::class, '300.1.1.1', 'ipv4 address'];
         yield 'array for a string-backed one' => [EmailAddress::class, ['jane@example.com'], 'email address'];
         yield 'bool for an int-backed one' => [Port::class, true, 'port'];
+        yield 'abstract type, no subclass fits' => [Code::class, 'abcdefgh', 'code'];
     }
 
     /**
@@ -161,6 +168,18 @@ final class ValidValueObjectTest extends TestCase
         $validator->getTranslator()->setLocale('de');
 
         self::assertSame(['email' => ['email ist kein gültiger Wert für email address.']], $validator->errors()->toArray());
+    }
+
+    public function testTheMessageCarriesNoPartOfTheValueWhileTheCauseQuotesIt(): void
+    {
+        $value = 'SeCrEt-7f3a';
+        $validator = $this->validation->make(['email' => $value], ['email' => [new ValidValueObject(EmailAddress::class)]]);
+
+        self::assertSame(['email' => ['The email field is not a valid email address.']], $validator->errors()->toArray());
+
+        $this->expectExceptionMessage($value);
+
+        new ValueObjectMapper()->fromUntrustedPayload(EmailAddress::class, $value);
     }
 
     public function testCustomMapperCodecIsUsed(): void

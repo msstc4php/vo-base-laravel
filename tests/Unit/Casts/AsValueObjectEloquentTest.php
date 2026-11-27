@@ -21,7 +21,9 @@ use MSSTC4PHP\ValueObject\Laravel\Internal\CompositeJson;
 use MSSTC4PHP\ValueObject\Laravel\Internal\DefaultMapper;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Customer;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Dimensions;
+use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\LongCode;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Priority;
+use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\ShortCode;
 use MSSTC4PHP\ValueObject\Network\Port;
 use MSSTC4PHP\ValueObject\Primitive\BoundedString;
 use MSSTC4PHP\ValueObject\Primitive\IntRange;
@@ -61,6 +63,7 @@ final class AsValueObjectEloquentTest extends TestCase
             $table->text('label')->nullable();
             $table->text('period')->nullable();
             $table->text('size')->nullable();
+            $table->string('code')->nullable();
         });
     }
 
@@ -279,6 +282,41 @@ final class AsValueObjectEloquentTest extends TestCase
 
         self::assertTrue($customer->isDirty('location'));
         self::assertTrue($customer->isDirty('email'));
+    }
+
+    public function testAnAbstractTypeReadsTheSubclassTheStoredValueFits(): void
+    {
+        $short = $this->insert(['code' => 'abc']);
+        $long = $this->insert(['code' => 'abcdef']);
+
+        self::assertEquals(ShortCode::from('abc'), $this->find($short)->getAttribute('code'));
+        self::assertEquals(LongCode::from('abcdef'), $this->find($long)->getAttribute('code'));
+    }
+
+    public function testAnAbstractTypeStoresAnAssignedSubclassAndAResolvedRawValue(): void
+    {
+        $instance = $this->create(['code' => LongCode::from('abcd')]);
+        $raw = $this->create(['code' => 'ab']);
+
+        self::assertSame('abcd', $this->stored($instance, 'code'));
+        self::assertSame('ab', $this->stored($raw, 'code'));
+        self::assertInstanceOf(ShortCode::class, $this->find($raw)->getAttribute('code'));
+    }
+
+    public function testAnAbstractTypeRefusesAValueNoSubclassFits(): void
+    {
+        $this->expectException(InvalidValueObjectException::class);
+
+        $this->create(['code' => 'abcdefgh']);
+    }
+
+    public function testAnAbstractTypeFailsLoudlyOnAStoredValueNoSubclassFits(): void
+    {
+        $id = $this->insert(['code' => 'abcdefgh']);
+
+        $this->expectException(InvalidValueObjectException::class);
+
+        $this->find($id)->getAttribute('code');
     }
 
     public function testInvalidStoredValueCanBeOverwritten(): void

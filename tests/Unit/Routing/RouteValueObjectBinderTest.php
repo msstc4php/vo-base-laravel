@@ -19,8 +19,11 @@ use MSSTC4PHP\ValueObject\Identity\EmailAddress;
 use MSSTC4PHP\ValueObject\Laravel\Internal\FieldName;
 use MSSTC4PHP\ValueObject\Laravel\Internal\TypeLabel;
 use MSSTC4PHP\ValueObject\Laravel\Routing\RouteValueObjectBinder;
+use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Code;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\Dimensions;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\DimensionsCodec;
+use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\LongCode;
+use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\ShortCode;
 use MSSTC4PHP\ValueObject\Laravel\Tests\Fixtures\UnmappedValueObject;
 use MSSTC4PHP\ValueObject\Network\Port;
 use MSSTC4PHP\ValueObject\Payload\ValueObjectMapper;
@@ -85,6 +88,36 @@ final class RouteValueObjectBinderTest extends TestCase
             self::assertSame('The user email route parameter is not a valid email address.', $exception->getMessage());
             self::assertNotNull($exception->getPrevious());
         }
+    }
+
+    public function testTheMessageCarriesNoPartOfTheValueWhileTheCauseQuotesIt(): void
+    {
+        $value = 'SeCrEt-7f3a';
+
+        try {
+            $this->bind('/users/{email}', static fn (EmailAddress $email): null => null, '/users/' . $value);
+            self::fail('No NotFoundHttpException thrown.');
+        } catch (NotFoundHttpException $exception) {
+            self::assertSame('The email route parameter is not a valid email address.', $exception->getMessage());
+            self::assertStringContainsString($value, $exception->getPrevious()?->getMessage() ?? '');
+        }
+    }
+
+    public function testAnAbstractTypeBecomesTheSubclassTheSegmentFits(): void
+    {
+        $short = $this->bind('/codes/{code}', static fn (Code $code): null => null, '/codes/abc');
+        $long = $this->bind('/codes/{code}', static fn (Code $code): null => null, '/codes/abcdef');
+
+        self::assertEquals(ShortCode::from('abc'), $short->parameter('code'));
+        self::assertEquals(LongCode::from('abcdef'), $long->parameter('code'));
+        self::assertInstanceOf(Code::class, $long->parameter('code'));
+    }
+
+    public function testAnAbstractTypeNoSubclassFitsIsNotFound(): void
+    {
+        $this->expectExceptionObject(new NotFoundHttpException('The code route parameter is not a valid code.'));
+
+        $this->bind('/codes/{code}', static fn (Code $code): null => null, '/codes/abcdefgh');
     }
 
     public function testAbsentOptionalParameterIsNotAddedByTheBinder(): void

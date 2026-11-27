@@ -24,6 +24,8 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * Listens to RouteMatched, which fires before the middleware stack, so SubstituteBindings still binds enums
  * (Laravel's own) and parameters with an explicit `Route::bind()` / `Route::model()`, which are left alone here.
  * Not `Router::substituteImplicitBindingsUsing()`: that is a single slot an application may already use.
+ *
+ * @internal registered by ValueObjectServiceProvider; use the provider
  */
 final readonly class RouteValueObjectBinder
 {
