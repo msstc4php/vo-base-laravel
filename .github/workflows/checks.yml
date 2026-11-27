@@ -6,6 +6,9 @@ name: Code Quality Checks
 
 on:
   workflow_dispatch:
+  # Weekly, so a new advisory or a broken dependency shows up without a push.
+  schedule:
+    - cron: '42 4 * * 1'
   pull_request:
   push:
     branches:
@@ -31,7 +34,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           repository: msstc4symfony/bundle-standard
-          ref: v4.1.1
+          ref: v4.2.0
           path: .standard
       - name: Compare with the php84 templates
         run: |
