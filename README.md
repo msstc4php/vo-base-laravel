@@ -284,8 +284,8 @@ own, and a `bind()` would build a new mapper and new casters on every attribute 
 A minor never refuses a value an earlier 1.x accepted: the cast, the rule, request input and the route binding add no
 validation of their own, the value objects (vo-base and the domain packages) decide, and they follow the same rule.
 
-Not covered: exception message wording (the package's messages name a type label, a field or a route parameter, never
-the value), except the translation key above; anything marked `@internal` (`Internal\`, `Casts\CasterCache`,
+Not covered: exception message wording (the package's messages name classes, type labels, input keys or route parameters,
+never the value), except the translation key above; anything marked `@internal` (`Internal\`, `Casts\CasterCache`,
 `Http\ValueObjectInput`, and `Http\RequestMacros` and `Routing\RouteValueObjectBinder`, which the provider registers).
 
 ## Development
